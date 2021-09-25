@@ -16,7 +16,7 @@
    Since each sine index is repeated at least 10 times (10 OVF scenarios for max freq of 100 [Hz])
    I can simply turn all the transistors off for some of the OVF scenarios, depending on the desired attenuation.
    //
-   REMINDER: Charge low side mosfets for at least 10[ms] at 50% duty cycle prior to normal operation.***********************
+   REMINDER: Charge low side mosfets for at least 10[ms] at 50% duty cycle prior to normal operation (App note AN4043, P. 34)***************************
 */
 #define _DISABLE_ARDUINO_TIMER0_INTERRUPT_HANDLER_  //These 2 lines were added to be able to compile. Also changed wiring.c file. Disables the previous overflow handles used for millis(), micros(), delay() etc.
 #include <wiring.c>                                 //Reference: https://stackoverflow.com/questions/46573550/atmel-arduino-isrtimer0-ovf-vect-wont-compile-first-defined-in-vector/48779546
