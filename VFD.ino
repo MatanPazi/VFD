@@ -1,20 +1,22 @@
 /* 32 sample sine wave look up table.
-   16Mhz CPU clk, & clkI/O
+   16Mhz CPU clk & clkI/O -> Prescaler of 2 -> 8Mhz
    1 OVF scenario will occur every 256 * 2 = 512 samples.
-   1/16MHz * 512 = 32[us]
-   going over the 32 sample look-up table will take 32us * 32 = 1.024[ms] -> 976.5625[Hz]
+   1/8MHz * 512 = 64[us]
+   going over the 15 sample look-up table will take 64us * 15 = 0.96[ms] -> 1,041.66[Hz]
    I'm aiming for 100[Hz] and below.
    So to achieve a 100[Hz] sine wave, I will need to increment in the sine table every
-   976.5625 / 100 = 9.765625 OVF scenarios
-   for 90[Hz] -> 976.5625 / 90 = 10.850694 OVF scenarios etc.
+   1,041.66 / 100 = 10.41 OVF scenarios
+   for 90[Hz] -> 1,041.66 / 90 = 11.57 OVF scenarios etc.
    Lower frequency resolution at higher frequencies since using byte data type (Rounded to a whole number)
    The amplitude will be attenuated by multiplying the sine table values by
    the desired frequency divided by the base frequency (60 OR 50 [Hz]) in order to maintain a constant V/Hz value.
    For 40 [Hz], the amplitude will be attenuated by 40/60 = 2/3.
    Due to low resolution of compare registers (only 1 byte), attenuating by dividing the sine table values
    will eventually lead to a distorted sine wave.
+   Consider the following to overcome the distorted sine wave issue:
    Since each sine index is repeated at least 10 times (10 OVF scenarios for max freq of 100 [Hz])
    I can simply turn all the transistors off for some of the OVF scenarios, depending on the desired attenuation.
+   For now, after testing, seems like even at an amplitude of 10%, the sine wave form still remains. So will continue using division for now.
    //
    REMINDER: Charge low side mosfets for at least 10[ms] at 50% duty cycle prior to normal operation (App note AN4043, P. 34)***************************
 */
@@ -27,14 +29,14 @@
 #define BASE_FREQ 1552       //Hz
 
 volatile uint8_t count = 0;
-volatile uint8_t count120 = 7;
-volatile uint8_t count240 = 14;
+volatile uint8_t count120 = 5;
+volatile uint8_t count240 = 10;
 volatile uint8_t Desired_Freq = 1;
 volatile uint32_t Freq_Counter = 0;
 volatile float   Amp = 1.0;
 const unsigned char DT = 1; //Dead time to prevent short-circuit betweem high & low mosfets
-const unsigned char Sine_Len = 21;
-const unsigned char Sine[] = {0x7f,0xb2,0xdd,0xf7,0xfc,0xec,0xc9,0x99,0x64,0x34,0x11,0x1,0x6,0x20,0x4b,0x7f};
+const unsigned char Sine_Len = 15;
+const unsigned char Sine[] = {0x7f,0xb5,0xe1,0xfa,0xfa,0xe1,0xb5,0x7f,0x48,0x1c,0x3,0x3,0x1c,0x48,0x7f};
 
 void setup()
 {
