@@ -30,34 +30,35 @@ volatile uint8_t count240 = 14;
 volatile uint8_t Desired_Freq = 1;
 volatile uint32_t Freq_Counter = 0;
 volatile float   Amp = 1.0;
-const unsigned char DT = 3; //Dead time to prevent short-circuit betweem high & low mosfets
+const unsigned char DT = 1; //Dead time to prevent short-circuit betweem high & low mosfets
 const unsigned char Sine_Len = 21;
-const unsigned char Sine[] = {0x7e,0xa3,0xc5,0xe1,0xf3,0xfc,0xf9,0xeb,0xd4,0xb5,0x91,0x6b,0x47,0x28,0x11,0x3,0x3,0x9,0x1b,0x37,0x59,0x7e};
+const unsigned char Sine[] = {0x7f,0xb2,0xdd,0xf7,0xfc,0xec,0xc9,0x99,0x64,0x34,0x11,0x1,0x6,0x20,0x4b,0x7f};
 
 void setup()
 {
   DDRD = (1 << PORTD6) | (1 << PORTD5) | (1 << PORTD3); //Sets the OC0A, OC0B and OC2B pins to outputs
   DDRB = (1 << PORTB3) | (1 << PORTB2) | (1 << PORTB1); //Sets the OC2A, OC1B and OC1A pins to outputs
   cli();                      //Disable interrupts
+  CLKPR = (1 << CLKPS0)       //System clock prescaler of 2
   //Timer 0
   TCNT0 = 0;                  //Zero counter of timer 0
   TCCR0A = (1 << COM0A1) | (1 << COM0B1) | (1 << COM0B0) | (1 << WGM00); // Clear OC0A and set OC0B counting up. Waveform mode 1 (Table 14-8)
   TCCR0B = (1 << CS00);       //No prescaler
   TIMSK0 = (1 << TOIE0);      //Timer/Counter0 Overflow Interrupt Enable
   OCR0A = Sine[0] - DT;   //Sign determined by set or clear at count-up
-  OCR0B = Sine[0] + DT;   //Sign determined by set or clear at count-up
+  OCR0B = Sine[0] + 2*DT;   //Sign determined by set or clear at count-up
   // Timer 1
   TCNT1 = 0;                  //Zero counter of timer 0
   TCCR1A = (1 << COM1A1) | (1 << COM1B1) | (1 << COM1B0) | (1 << WGM10); // Clear OC1A and set OC1B counting up. Waveform mode 1 (Table 14-8)
   TCCR1B = (1 << CS10);       //No prescaler
   OCR1A = Sine[count120] - DT;   //Sign determined by set or clear at count-up
-  OCR1B = Sine[count120] + DT;   //Sign determined by set or clear at count-up
+  OCR1B = Sine[count120] + 2*DT;   //Sign determined by set or clear at count-up
   // Timer 2
   TCNT2 = 0;                  //Zero counter of timer 0
   TCCR2A = (1 << COM2A1) | (1 << COM2B1) | (1 << COM2B0) | (1 << WGM20); // Clear OC0A and set OC0B counting up. Waveform mode 1 (Table 14-8)
   TCCR2B = (1 << CS20);       //No prescaler
   OCR2A = Sine[count240] - DT;   //Sign determined by set or clear at count-up
-  OCR2B = Sine[count240] + DT;   //Sign determined by set or clear at count-up
+  OCR2B = Sine[count240] + 2*DT;   //Sign determined by set or clear at count-up
   sei();
   while (1)  {}
 }
@@ -79,12 +80,12 @@ ISR (TIMER0_OVF_vect)
     //  
     if ((0.1*Sine[count] - DT) < 0) OCR0A = 0;
     else  OCR0A = 0.1*Sine[count] - DT;  //Sign determined by set or clear at count-up
-    OCR0B = 0.1*Sine[count] + DT;  //Sign determined by set or clear at count-up
+    OCR0B = 0.1*Sine[count] + 2*DT;  //Sign determined by set or clear at count-up
     //
     OCR1A = Sine[count120] - DT;  //Sign determined by set or clear at count-up
-    OCR1B = Sine[count120] + DT;  //Sign determined by set or clear at count-up
+    OCR1B = Sine[count120] + 2*DT;  //Sign determined by set or clear at count-up
     OCR2A = Sine[count240] - DT;  //Sign determined by set or clear at count-up
-    OCR2B = Sine[count240] + DT;  //Sign determined by set or clear at count-up
+    OCR2B = Sine[count240] + 2*DT;  //Sign determined by set or clear at count-up
     Freq_Counter = 0;
   }
 }
