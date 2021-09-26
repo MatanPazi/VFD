@@ -43,7 +43,8 @@ void setup()
   DDRD = (1 << PORTD6) | (1 << PORTD5) | (1 << PORTD3); //Sets the OC0A, OC0B and OC2B pins to outputs
   DDRB = (1 << PORTB3) | (1 << PORTB2) | (1 << PORTB1); //Sets the OC2A, OC1B and OC1A pins to outputs
   cli();                      //Disable interrupts
-  CLKPR = (1 << CLKPS0)       //System clock prescaler of 2
+  CLKPR = (1 << CLKPCE);      //Enable change of the clock prescaler
+  CLKPR = (1 << CLKPS0);      //Set system clock prescaler to 2
   //Timer 0
   TCNT0 = 0;                  //Zero counter of timer 0
   TCCR0A = (1 << COM0A1) | (1 << COM0B1) | (1 << COM0B0) | (1 << WGM00); // Clear OC0A and set OC0B counting up. Waveform mode 1 (Table 14-8)
@@ -82,9 +83,9 @@ ISR (TIMER0_OVF_vect)
     if (count120 == Sine_Len) count120 = 0;
     if (count240 == Sine_Len) count240 = 0;    
     //  
-    if ((0.1*Sine[count] - DT) < 0) OCR0A = 0;
-    else  OCR0A = 0.1*Sine[count] - DT;  //Sign determined by set or clear at count-up
-    OCR0B = 0.1*Sine[count] + 2*DT;  //Sign determined by set or clear at count-up
+    if ((Sine[count] - DT) < 0) OCR0A = 0;
+    else  OCR0A = Sine[count] - DT;  //Sign determined by set or clear at count-up
+    OCR0B = Sine[count] + 2*DT;  //Sign determined by set or clear at count-up
     //
     OCR1A = Sine[count120] - DT;  //Sign determined by set or clear at count-up
     OCR1B = Sine[count120] + 2*DT;  //Sign determined by set or clear at count-up
