@@ -31,7 +31,7 @@
 #include <avr/interrupt.h>
 #include <avr/io.h>
 
-#define BASE_FREQ 1552       //Hz
+#define BASE_FREQ 1041       //Hz
 
 volatile uint8_t count = 0;
 volatile uint8_t count120 = 5;
