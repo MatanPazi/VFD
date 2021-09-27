@@ -40,7 +40,7 @@ volatile uint8_t Desired_Freq = 1;
 volatile uint32_t Freq_Counter = 0;
 volatile float   Amp = 1.0;
 const unsigned char DT = 1; //Dead time to prevent short-circuit betweem high & low mosfets
-const unsigned char Sine_Len = 15;
+const unsigned char Sine_Len = 15;  //Needs to be divisble by 3 for 120 and 240 degrees and also divisible by 2, for 180 phase shift for 1 phase w/ capacitor connection.
 const unsigned char Sine[] = {0x7f,0xb5,0xe1,0xfa,0xfa,0xe1,0xb5,0x7f,0x48,0x1c,0x3,0x3,0x1c,0x48,0x7f};
 
 void setup()
