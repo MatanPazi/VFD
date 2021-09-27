@@ -1,0 +1,16 @@
+Internal operation (And notes to self):
+1. Turning on the main power switch.
+2. Wait in this state for ~3 seconds untill the rectifier capacitors are adequately charged.
+3. Switch the relay state to bypass the initial charging resistor. Make sure the relay is low untill this command (Use pulldown). 
+4. The VFD is now ready to be configured (V/f and # of ph). The VFD can be configured only if the potentiometer switch is clicked OFF.
+  a. If the Pot switch is turned on prior to the VFD being configured, the VFD won't drive the motor.
+  b. The chosen configuration will be saved to the EEPROM, so if the Pot switch is turned on the next time the power switch is turned on, the VFD will start driving the motor.
+5. The configuration is done using the tactile switch.
+  a. A short click transitions between the available configurations (V/f and # of ph) showing the current configuration.
+  b. A long click (1 sec) will cause the currently shown configuration to be editable and will start blinking.
+  c. Once blinking, a short click will do the following:
+    1. For V/f, increment by 0.1
+    2. For # of ph, cycle through the possible options
+  d. Another long click sets the chosen configuration (And saves to EEPROM) and ceases the blinking
+6. The lowest value (Once the Pot swtich clicked on) results in the lowest freq/voltage. The determining factor is the frequency.
+   Lowest freq will be 10 Hz and the lowest amplitude is determined by the V/f.
