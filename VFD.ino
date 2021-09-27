@@ -23,7 +23,7 @@
    If operating a 3 phase motor, the 3 sine waves need to be 120 def apart
    If operating a single phase motor, we have 2 options depending on the wiring:
    1. With the capacitors removed, the phase shift between the main and auxiliary windings is achieved by connecting all three phases and the 3 sine waves can still be 120 degrees apart
-   2. With the capacitor/s installed, A single sine wave will be used connecting only 2 phases, so the outputs need to be inverted. 2 sine waves 180 degrees phase shifted.
+   2. With the capacitor/s installed, A single sine wave will be used connecting only 2 phases, so the outputs need to be inverted. 2 sine waves 180 degrees phase shifted (Simply invert PWM logic for relevant timer).
 */
 #define _DISABLE_ARDUINO_TIMER0_INTERRUPT_HANDLER_  //These 2 lines were added to be able to compile. Also changed wiring.c file. Disables the previous overflow handles used for millis(), micros(), delay() etc.
 #include <wiring.c>                                 //Reference: https://stackoverflow.com/questions/46573550/atmel-arduino-isrtimer0-ovf-vect-wont-compile-first-defined-in-vector/48779546
@@ -40,7 +40,7 @@ volatile uint8_t Desired_Freq = 1;
 volatile uint32_t Freq_Counter = 0;
 volatile float   Amp = 1.0;
 const unsigned char DT = 1; //Dead time to prevent short-circuit betweem high & low mosfets
-const unsigned char Sine_Len = 15;  //Needs to be divisble by 3 for 120 and 240 degrees and also divisible by 2, for 180 phase shift for 1 phase w/ capacitor connection.
+const unsigned char Sine_Len = 15;
 const unsigned char Sine[] = {0x7f,0xb5,0xe1,0xfa,0xfa,0xe1,0xb5,0x7f,0x48,0x1c,0x3,0x3,0x1c,0x48,0x7f};
 
 void setup()
