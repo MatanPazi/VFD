@@ -33,18 +33,26 @@
 
 #define BASE_FREQ 1041       //Hz
 
+//Sine wave index variables
 volatile uint8_t count = 0;
 volatile uint8_t count120 = 5;
 volatile uint8_t count240 = 10;
-volatile uint8_t Desired_Freq = 1;
-volatile uint32_t Freq_Counter = 0;
+//
+volatile uint8_t Desired_Freq = 1;     //Desired freq [Hz]
+volatile uint32_t OVF_Counter = 0;    //Increments every overflow
 volatile float   Amp = 1.0;
 const unsigned char DT = 1; //Dead time to prevent short-circuit betweem high & low mosfets
 const unsigned char Sine_Len = 15;
 const unsigned char Sine[] = {0x7f,0xb5,0xe1,0xfa,0xfa,0xe1,0xb5,0x7f,0x48,0x1c,0x3,0x3,0x1c,0x48,0x7f};
 
-void setup()
+void loop()
 {
+  
+}
+
+void pwm_config()
+{
+  //Need to make sure the pins are LOW prior to and after setting them to outputs so don't accidentally cause short in IPM.
   DDRD = (1 << PORTD6) | (1 << PORTD5) | (1 << PORTD3); //Sets the OC0A, OC0B and OC2B pins to outputs
   DDRB = (1 << PORTB3) | (1 << PORTB2) | (1 << PORTB1); //Sets the OC2A, OC1B and OC1A pins to outputs
   cli();                      //Disable interrupts
@@ -70,7 +78,6 @@ void setup()
   OCR2A = Sine[count240] - DT;   //Sign determined by set or clear at count-up
   OCR2B = Sine[count240] + 2*DT;   //Sign determined by set or clear at count-up
   sei();
-  while (1)  {}
 }
 
 
@@ -78,8 +85,8 @@ void setup()
 ISR (TIMER0_OVF_vect)
 {
   Desired_Freq = 100;
-  Freq_Counter++;
-  if (Freq_Counter >= (BASE_FREQ / Desired_Freq))
+  OVF_Counter++;
+  if (OVF_Counter >= (BASE_FREQ / Desired_Freq))
   {
     count++;
     count120++;
@@ -96,6 +103,6 @@ ISR (TIMER0_OVF_vect)
     OCR1B = Sine[count120] + 2*DT;  //Sign determined by set or clear at count-up
     OCR2A = Sine[count240] - DT;  //Sign determined by set or clear at count-up
     OCR2B = Sine[count240] + 2*DT;  //Sign determined by set or clear at count-up
-    Freq_Counter = 0;
+    OVF_Counter = 0;
   }
 }
