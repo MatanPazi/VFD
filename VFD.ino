@@ -39,7 +39,7 @@
 #define EEPROM_PRIOR_SAVE_VALUE 123
 //millis() etc. disabled due to use of timers in PWM.
 //Approx. time of loop ~
-#define 1_MS   16
+#define ONE_MS   16
 #define HALF_SECOND   8000
 uint32_t Timer = 0;
 uint32_t Timer_Temp = 0;
