@@ -72,7 +72,11 @@ void setup()
 void loop()
 {   
    Pot_State_Check();
+   //function: If PIND2==LOW for more than half second, on a rising edge of PINB4 (low and high states are long enough) due the following:
+   //If the low state was longer than 1 sec, turn to config state
+   //Otherwise, cycle between possible configurations
    Timer++;
+   
    
   
 }
