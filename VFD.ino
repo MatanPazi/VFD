@@ -30,9 +30,23 @@
 #include <stdint.h>
 #include <avr/interrupt.h>
 #include <avr/io.h>
+#include <EEPROM.h>
 
-#define BASE_FREQ 1041       //Hz
+#define BASE_FREQ 1041                 //Hz
+#define PHASE_CONFIG_ADDRESS 0
+#define V_F_CONFIG_ADDRESS 1
+#define EEPROM_PRIOR_SAVE_ADDRESS 256
+#define EEPROM_PRIOR_SAVE_VALUE 123
+//millis() etc. disabled due to use of timers in PWM.
+//Approx. time of loop ~
+#define 1_MS   16
+#define HALF_SECOND   8000
 uint32_t Timer = 0;
+uint32_t Timer_Temp = 0;
+uint32_t Config_Rdy_Timer = 0;
+uint8_t  Phase_Config = 0;             //1: 3 phase, 2: 1 phase
+bool  Config_Rdy_Flag = 0;             //Flag to determine if V/f & phase configurations were set
+float V_f = 1.0;                       //Voltage to frequency value of the motor
 //Sine wave index variables
 volatile uint8_t Sine_Index = 0;
 volatile uint8_t Sine_Index_120 = 5;
@@ -40,7 +54,6 @@ volatile uint8_t Sine_Index_240 = 10;
 //
 volatile uint8_t Desired_Freq = 1;     //Desired freq [Hz]
 volatile uint32_t OVF_Counter = 0;     //Increments every overflow
-volatile float   Amp = 1.0;            //Desired amplitude
 const unsigned char DT = 1;            //Dead time to prevent short-circuit betweem high & low mosfets
 const unsigned char Sine_Len = 15;     //Sine table length
 const unsigned char Sine[] = {0x7f,0xb5,0xe1,0xfa,0xfa,0xe1,0xb5,0x7f,0x48,0x1c,0x3,0x3,0x1c,0x48,0x7f};
@@ -49,16 +62,39 @@ void setup()
    PORTD = (1 << PORTD2);     //Activates internal pull up for PD2. Default pin state is input. Potentiometer switch
    PORTB = (1 << PORTB4);     //Activates internal pull up for PB4. Default pin state is input. Tactile switch
    DDRB = (1 << DDRB0);       //Sets PB0 pin to output (Default is LOW). Commands the relay
+   if (EEPROM.read(EEPROM_PRIOR_SAVE_ADDRESS) == EEPROM_PRIOR_SAVE_VALUE)
+   {
+     EEPROM.get(PHASE_CONFIG_ADDRESS, Phase_Config);
+     EEPROM.get(V_F_CONFIG_ADDRESS, V_f);      
+     Config_Rdy_Flag = 1;
+   }
 }
 void loop()
-{
-   
+{   
+   Pot_State_Check();
    Timer++;
    
   
 }
 
-void pwm_config()
+void Pot_State_Check()
+{
+   if (PIND2 && Config_Rdy_Flag)
+   {      
+      if (Timer - Timer_Temp  > 1) Config_Rdy_Timer = 0;    //To make sure these increments are consecutive
+      else  Config_Rdy_Timer++;      
+      Timer_Temp = Timer;
+   }
+   if (Config_Rdy_Timer > HALF_SECOND)
+   {
+      Pwm_Config();
+      Config_Rdy_Flag = 0;
+      Config_Rdy_Timer = 0;
+   }   
+}
+
+
+void Pwm_Config()
 {
   //Need to make sure the pins are LOW prior to and after setting them to outputs so don't accidentally cause short in IPM.
   DDRD = (1 << DDRD6) | (1 << DDRD5) | (1 << DDRD3); //Sets the OC0A, OC0B and OC2B pins to outputs
