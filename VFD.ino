@@ -32,29 +32,37 @@
 #include <avr/io.h>
 
 #define BASE_FREQ 1041       //Hz
-
+uint32_t Timer = 0;
 //Sine wave index variables
-volatile uint8_t count = 0;
-volatile uint8_t count120 = 5;
-volatile uint8_t count240 = 10;
+volatile uint8_t Sine_Index = 0;
+volatile uint8_t Sine_Index_120 = 5;
+volatile uint8_t Sine_Index_240 = 10;
 //
 volatile uint8_t Desired_Freq = 1;     //Desired freq [Hz]
-volatile uint32_t OVF_Counter = 0;    //Increments every overflow
-volatile float   Amp = 1.0;
-const unsigned char DT = 1; //Dead time to prevent short-circuit betweem high & low mosfets
-const unsigned char Sine_Len = 15;
+volatile uint32_t OVF_Counter = 0;     //Increments every overflow
+volatile float   Amp = 1.0;            //Desired amplitude
+const unsigned char DT = 1;            //Dead time to prevent short-circuit betweem high & low mosfets
+const unsigned char Sine_Len = 15;     //Sine table length
 const unsigned char Sine[] = {0x7f,0xb5,0xe1,0xfa,0xfa,0xe1,0xb5,0x7f,0x48,0x1c,0x3,0x3,0x1c,0x48,0x7f};
-
+void setup()
+{
+   PORTD = (1 << PORTD2);     //Activates internal pull up for PD2. Default pin state is input. Potentiometer switch
+   PORTB = (1 << PORTB4);     //Activates internal pull up for PB4. Default pin state is input. Tactile switch
+   DDRB = (1 << DDRB0);       //Sets PB0 pin to output (Default is LOW). Commands the relay
+}
 void loop()
 {
+   
+   Timer++;
+   
   
 }
 
 void pwm_config()
 {
   //Need to make sure the pins are LOW prior to and after setting them to outputs so don't accidentally cause short in IPM.
-  DDRD = (1 << PORTD6) | (1 << PORTD5) | (1 << PORTD3); //Sets the OC0A, OC0B and OC2B pins to outputs
-  DDRB = (1 << PORTB3) | (1 << PORTB2) | (1 << PORTB1); //Sets the OC2A, OC1B and OC1A pins to outputs
+  DDRD = (1 << DDRD6) | (1 << DDRD5) | (1 << DDRD3); //Sets the OC0A, OC0B and OC2B pins to outputs
+  DDRB = (1 << DDRB3) | (1 << DDRB2) | (1 << DDRB1); //Sets the OC2A, OC1B and OC1A pins to outputs
   cli();                      //Disable interrupts
   CLKPR = (1 << CLKPCE);      //Enable change of the clock prescaler
   CLKPR = (1 << CLKPS0);      //Set system clock prescaler to 2
@@ -88,21 +96,21 @@ ISR (TIMER0_OVF_vect)
   OVF_Counter++;
   if (OVF_Counter >= (BASE_FREQ / Desired_Freq))
   {
-    count++;
-    count120++;
-    count240++;
-    if (count == Sine_Len) count = 0;
-    if (count120 == Sine_Len) count120 = 0;
-    if (count240 == Sine_Len) count240 = 0;    
+    Sine_Index++;
+    Sine_Index_120++;
+    Sine_Index_240++;
+    if (Sine_Index == Sine_Len) Sine_Index = 0;
+    if (Sine_Index_120 == Sine_Len) Sine_Index_120 = 0;
+    if (Sine_Index_240 == Sine_Len) Sine_Index_240 = 0;    
     //  
-    if ((Sine[count] - DT) < 0) OCR0A = 0;
-    else  OCR0A = Sine[count] - DT;  //Sign determined by set or clear at count-up
-    OCR0B = Sine[count] + 2*DT;  //Sign determined by set or clear at count-up
+    if ((Sine[Sine_Index] - DT) < 0) OCR0A = 0;
+    else  OCR0A = Sine[Sine_Index] - DT;  //Sign determined by set or clear at count-up
+    OCR0B = Sine[Sine_Index] + 2*DT;  //Sign determined by set or clear at count-up
     //
-    OCR1A = Sine[count120] - DT;  //Sign determined by set or clear at count-up
-    OCR1B = Sine[count120] + 2*DT;  //Sign determined by set or clear at count-up
-    OCR2A = Sine[count240] - DT;  //Sign determined by set or clear at count-up
-    OCR2B = Sine[count240] + 2*DT;  //Sign determined by set or clear at count-up
+    OCR1A = Sine[Sine_Index_120] - DT;  //Sign determined by set or clear at count-up
+    OCR1B = Sine[Sine_Index_120] + 2*DT;  //Sign determined by set or clear at count-up
+    OCR2A = Sine[Sine_Index_240] - DT;  //Sign determined by set or clear at count-up
+    OCR2B = Sine[Sine_Index_240] + 2*DT;  //Sign determined by set or clear at count-up
     OVF_Counter = 0;
   }
 }
