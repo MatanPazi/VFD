@@ -31,7 +31,14 @@
 #include <avr/interrupt.h>
 #include <avr/io.h>
 #include <EEPROM.h>
+#include <TM1637Display.h>
 
+// Module connection pins (Digital Pins)
+#define CLK1 3
+#define DIO1 2
+#define CLK2 13
+#define DIO2 6
+//
 #define BASE_FREQ 1041                 //Hz
 #define PHASE_CONFIG_ADDRESS 0
 #define V_F_CONFIG_ADDRESS 1
@@ -64,11 +71,15 @@ volatile uint32_t OVF_Counter = 0;     //Increments every overflow
 const unsigned char DT = 1;            //Dead time to prevent short-circuit betweem high & low mosfets
 const unsigned char Sine_Len = 15;     //Sine table length
 const unsigned char Sine[] = {0x7f,0xb5,0xe1,0xfa,0xfa,0xe1,0xb5,0x7f,0x48,0x1c,0x3,0x3,0x1c,0x48,0x7f};
+
+TM1637Display1 display(CLK1, DIO1);
+TM1637Display2 display(CLK2, DIO2);
+
 void setup()
 {
    PORTD = (1 << PORTD2);     //Activates internal pull up for PD2. Default pin state is input. Potentiometer switch
    PORTB = (1 << PORTB4);     //Activates internal pull up for PB4. Default pin state is input. Tactile switch
-   DDRB = (1 << DDRB0);       //Sets PB0 pin to output (Default is LOW). Commands the relay
+   DDRB = (1 << DDB0);       //Sets PB0 pin to output (Default is LOW). Commands the relay
    if (EEPROM.read(EEPROM_PRIOR_SAVE_ADDRESS) == EEPROM_PRIOR_SAVE_VALUE)
    {
      EEPROM.get(PHASE_CONFIG_ADDRESS, Phase_Config);
