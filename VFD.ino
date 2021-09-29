@@ -49,6 +49,7 @@ uint32_t Config_Change_Rdy_Timer = 0;
 uint8_t  Phase_Config = 0;             //1: 3 phase, 2: 1 phase
 bool  Config_Set_Rdy_Flag = 0;             //Flag to determine if V/f & phase configurations were set
 bool  Config_Change_Rdy_Flag = 0;      //Flag to determine if V/f & phase configurations are ready to be set (If potentiometer switch is low long enough)
+bool  PWM_Running = 0;                 //Indicates if the PWM is operating or not
 float V_f = 1.0;                       //Voltage to frequency value of the motor
 //Sine wave index variables
 volatile uint8_t Sine_Index = 0;
@@ -69,12 +70,16 @@ void setup()
    {
      EEPROM.get(PHASE_CONFIG_ADDRESS, Phase_Config);
      EEPROM.get(V_F_CONFIG_ADDRESS, V_f);      
-     Config_Rdy_Flag = 1;
+     Config_Set_Rdy_Flag = 1;
    }
 }
 void loop()
 {   
    Pot_State_Check();
+   if (Config_Change_Rdy_Flag)
+   {
+      //Detect button push and duration
+   }
    //function: If PIND2==LOW for more than half second, on a rising edge of PINB4 (low and high states are long enough) due the following:
    //If the low state was longer than 1 sec, turn to config state
    //Otherwise, cycle between possible configurations
@@ -86,35 +91,55 @@ void loop()
 
 void Pot_State_Check()
 {
-   if (PIND2 && Config_Set_Rdy_Flag)
+   if (PIND2)     //Potnetiometer switch ON
    {      
-      if (Timer - Timer_Temp  > 1) Config_Set_Rdy_Timer = 0;    //To make sure these increments are consecutive
-      else  Config_Set_Rdy_Timer++;      
-      Timer_Temp = Timer;
+      if (Config_Set_Rdy_Flag && (!PWM_Running))
+      {
+         if (Timer - Timer_Temp  > 1) Config_Set_Rdy_Timer = 0;    //To make sure these increments are consecutive
+         else  Config_Set_Rdy_Timer++;      
+         Timer_Temp = Timer;
+      }
+      Config_Change_Rdy_Timer = 0;
+      Config_Change_Rdy_Flag = 0;
    }
-   if (PIND2 == 0)
+   else           //Potentiometer switch OFF
    {
       if (Timer - Timer_Temp  > 1) Config_Change_Rdy_Timer = 0;    //To make sure these increments are consecutive
       else  Config_Change_Rdy_Timer++;      
       Timer_Temp = Timer;
+      Config_Set_Rdy_Timer = 0;
    }
    if (Config_Set_Rdy_Timer > HALF_SECOND)
    {
       Pwm_Config();
-      Config_Set_Rdy_Flag = 0;
       Config_Set_Rdy_Timer = 0;
    }   
    if (Config_Change_Rdy_Timer > HALF_SECOND)
    {
-      Config_Change_Rdy_Timer = 1;
+      Pwm_Disable();
+      Config_Change_Rdy_Flag = 1;
       Config_Set_Rdy_Timer = 0;
    }  
 }
 
 
+void Pwm_Disable()
+{
+   PWM_Running = 0;
+   cli();
+   TCCR0A = 0;
+   TCCR0B = 0;
+   TCCR1A = 0;
+   TCCR1B = 0;
+   TCCR2A = 0;
+   TCCR2B = 0;
+   sei();         
+}
+
 void Pwm_Config()
 {
    //Need to make sure the pins are LOW prior to and after setting them to outputs so don't accidentally cause short in IPM.
+   PWM_Running = 1;
    DDRD = (1 << DDRD6) | (1 << DDRD5) | (1 << DDRD3); //Sets the OC0A, OC0B and OC2B pins to outputs
    DDRB = (1 << DDRB3) | (1 << DDRB2) | (1 << DDRB1); //Sets the OC2A, OC1B and OC1A pins to outputs
    if (Phase_Config == 1)
