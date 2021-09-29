@@ -42,12 +42,14 @@
 #define DIO1 2
 #define CLK2 13
 #define DIO2 6
+#define POT_INPUT A2
 //
 #define BASE_FREQ 1041                 //Hz
 #define PHASE_CONFIG_ADDRESS 0
 #define V_F_CONFIG_ADDRESS 1
 #define EEPROM_PRIOR_SAVE_ADDRESS 256
 #define EEPROM_PRIOR_SAVE_VALUE 123
+#define MILLI_A_RESOLUTION 125
 
 const uint8_t ONE_PHASE[] = {
     SEG_B | SEG_C,                                    // 1
@@ -67,6 +69,7 @@ const uint8_t AMPERE[] = {
 //Approx. time of loop ~
 #define ONE_MS   16
 #define HALF_SECOND   8000
+uint16_t Pot_Value_Shift = 0;
 uint32_t Timer = 0;
 uint32_t Timer_Temp = 0;
 uint32_t Timer_Temp1 = 0;
@@ -91,11 +94,15 @@ const unsigned char DT = 1;            //Dead time to prevent short-circuit betw
 const unsigned char Sine_Len = 15;     //Sine table length
 const unsigned char Sine[] = {0x7f,0xb5,0xe1,0xfa,0xfa,0xe1,0xb5,0x7f,0x48,0x1c,0x3,0x3,0x1c,0x48,0x7f};
 
-TM1637Display1 display(CLK1, DIO1);
-TM1637Display2 display(CLK2, DIO2);
+TM1637Display Display1(CLK1, DIO1);
+TM1637Display Display2(CLK2, DIO2);
 
 void setup()
 {
+   Display1.setBrightness(0x02);
+   Display2.setBrightness(0x02);
+   Display1.clear();
+   Display2.clear();
    PORTD = (1 << PORTD2);     //Activates internal pull up for PD2. Default pin state is input. Potentiometer switch
    PORTB = (1 << PORTB4);     //Activates internal pull up for PB4. Default pin state is input. Tactile switch
    DDRB = (1 << DDB0);       //Sets PB0 pin to output (Default is LOW). Commands the relay
@@ -108,6 +115,8 @@ void setup()
 }
 void loop()
 {   
+   Pot_Value_Shift = (analogRead(POT_INPUT) >> 16);    //a value of 1023 -> 8[A], so 1023 >> 16 will give a resolution of 125[mA]
+   Pot_Value_Shift = Pot_Value_Shift * MILLI_A_RESOLUTION;   
    Pot_Switch_State_Check();
    if (Config_Change_Rdy_Flag)
    {
@@ -163,6 +172,7 @@ void Pot_Switch_State_Check()
    if (Config_Set_Rdy_Timer > HALF_SECOND)
    {
       Pwm_Config();
+      
       Config_Set_Rdy_Timer = 0;
    }   
    if (Config_Change_Rdy_Timer > HALF_SECOND)
