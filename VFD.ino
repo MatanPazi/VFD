@@ -26,6 +26,8 @@
    2. With the capacitor/s installed, A single sine wave will be used connecting only 2 phases, so the outputs need to be inverted. 2 sine waves 180 degrees phase shifted (Simply invert PWM logic for relevant timer).
    // Setting the LED display
    https://lastminuteengineers.com/tm1637-arduino-tutorial/
+   //Atmega328 pin numbers:
+   http://www.learningaboutelectronics.com/Articles/Atmega328-pinout.php
 */
 #define _DISABLE_ARDUINO_TIMER0_INTERRUPT_HANDLER_  //These 2 lines were added to be able to compile. Also changed wiring.c file. Disables the previous overflow handles used for millis(), micros(), delay() etc.
 #include <wiring.c>                                 //Reference: https://stackoverflow.com/questions/46573550/atmel-arduino-isrtimer0-ovf-vect-wont-compile-first-defined-in-vector/48779546
