@@ -43,10 +43,13 @@
 #define HALF_SECOND   8000
 uint32_t Timer = 0;
 uint32_t Timer_Temp = 0;
+uint32_t Timer_Temp1 = 0;
 uint32_t Init_PWM_Counter = 0;
+uint32_t Click_Timer = 0;
 uint32_t Config_Set_Rdy_Timer = 0;
 uint32_t Config_Change_Rdy_Timer = 0;
 uint8_t  Phase_Config = 0;             //1: 3 phase, 2: 1 phase
+uint8_t  Click_Type = 0;               //1: Short, 2: Long
 bool  Config_Set_Rdy_Flag = 0;             //Flag to determine if V/f & phase configurations were set
 bool  Config_Change_Rdy_Flag = 0;      //Flag to determine if V/f & phase configurations are ready to be set (If potentiometer switch is low long enough)
 bool  PWM_Running = 0;                 //Indicates if the PWM is operating or not
@@ -75,10 +78,10 @@ void setup()
 }
 void loop()
 {   
-   Pot_State_Check();
+   Pot_Switch_State_Check();
    if (Config_Change_Rdy_Flag)
    {
-      //Detect button push and duration
+      Button_Click();
    }
    //function: If PIND2==LOW for more than half second, on a rising edge of PINB4 (low and high states are long enough) due the following:
    //If the low state was longer than 1 sec, turn to config state
@@ -89,7 +92,25 @@ void loop()
   
 }
 
-void Pot_State_Check()
+void Button_Click()
+{
+   if (!PINB4)
+   {
+      if (Timer - Timer_Temp1  > 1) Click_Timer = 0;    //To make sure these increments are consecutive
+      else Click_Timer++;
+      Timer_Temp1 = Timer;
+   }
+   else
+   {
+      if (Click_Timer > 10 * ONE_MS && Click_Timer < HALF_SECOND) Click_Type = 1;
+      else if (Click_Timer > 2 * HALF_SECOND) Click_Type = 2;         
+      Click_Timer = 0;
+   }   
+   
+}
+
+
+void Pot_Switch_State_Check()
 {
    if (PIND2)     //Potnetiometer switch ON
    {      
