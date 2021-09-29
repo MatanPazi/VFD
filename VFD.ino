@@ -58,7 +58,7 @@ const uint8_t THREE_PHASE[] = {
     SEG_B | SEG_C | SEG_E | SEG_F | SEG_G             // H
     };
 const uint8_t AMPERE[] = {
-    SEG_A | SEG_B | SEG_C | SEG_E | SEG_F | SEG_G           // A
+    SEG_A | SEG_B | SEG_C | SEG_E | SEG_F | SEG_G     // A
     };
 
 //millis() etc. disabled due to use of timers in PWM.
