@@ -24,6 +24,8 @@
    If operating a single phase motor, we have 2 options depending on the wiring:
    1. With the capacitors removed, the phase shift between the main and auxiliary windings is achieved by connecting all three phases and the 3 sine waves can still be 120 degrees apart
    2. With the capacitor/s installed, A single sine wave will be used connecting only 2 phases, so the outputs need to be inverted. 2 sine waves 180 degrees phase shifted (Simply invert PWM logic for relevant timer).
+   // Setting the LED display
+   https://lastminuteengineers.com/tm1637-arduino-tutorial/
 */
 #define _DISABLE_ARDUINO_TIMER0_INTERRUPT_HANDLER_  //These 2 lines were added to be able to compile. Also changed wiring.c file. Disables the previous overflow handles used for millis(), micros(), delay() etc.
 #include <wiring.c>                                 //Reference: https://stackoverflow.com/questions/46573550/atmel-arduino-isrtimer0-ovf-vect-wont-compile-first-defined-in-vector/48779546
@@ -44,6 +46,21 @@
 #define V_F_CONFIG_ADDRESS 1
 #define EEPROM_PRIOR_SAVE_ADDRESS 256
 #define EEPROM_PRIOR_SAVE_VALUE 123
+
+const uint8_t ONE_PHASE[] = {
+    SEG_B | SEG_C,                                    // 1
+    SEG_A | SEG_B | SEG_E | SEG_F | SEG_G,            // P
+    SEG_B | SEG_C | SEG_E | SEG_F | SEG_G             // H
+    };
+const uint8_t THREE_PHASE[] = {
+    SEG_A | SEG_B | SEG_C | SEG_D | SEG_G,            // 3
+    SEG_A | SEG_B | SEG_E | SEG_F | SEG_G,            // P
+    SEG_B | SEG_C | SEG_E | SEG_F | SEG_G             // H
+    };
+const uint8_t AMPERE[] = {
+    SEG_A | SEG_B | SEG_C | SEG_E | SEG_F | SEG_G           // A
+    };
+
 //millis() etc. disabled due to use of timers in PWM.
 //Approx. time of loop ~
 #define ONE_MS   16
