@@ -43,16 +43,19 @@
 #define HALF_SECOND   8000
 uint32_t Timer = 0;
 uint32_t Timer_Temp = 0;
-uint32_t Config_Rdy_Timer = 0;
+uint32_t Init_PWM_Counter = 0;
+uint32_t Config_Set_Rdy_Timer = 0;
+uint32_t Config_Change_Rdy_Timer = 0;
 uint8_t  Phase_Config = 0;             //1: 3 phase, 2: 1 phase
-bool  Config_Rdy_Flag = 0;             //Flag to determine if V/f & phase configurations were set
+bool  Config_Set_Rdy_Flag = 0;             //Flag to determine if V/f & phase configurations were set
+bool  Config_Change_Rdy_Flag = 0;      //Flag to determine if V/f & phase configurations are ready to be set (If potentiometer switch is low long enough)
 float V_f = 1.0;                       //Voltage to frequency value of the motor
 //Sine wave index variables
 volatile uint8_t Sine_Index = 0;
 volatile uint8_t Sine_Index_120 = 5;
 volatile uint8_t Sine_Index_240 = 10;
 //
-volatile uint8_t Desired_Freq = 1;     //Desired freq [Hz]
+volatile uint8_t Desired_Freq = 100;     //Desired freq [Hz]
 volatile uint32_t OVF_Counter = 0;     //Increments every overflow
 const unsigned char DT = 1;            //Dead time to prevent short-circuit betweem high & low mosfets
 const unsigned char Sine_Len = 15;     //Sine table length
@@ -83,74 +86,118 @@ void loop()
 
 void Pot_State_Check()
 {
-   if (PIND2 && Config_Rdy_Flag)
+   if (PIND2 && Config_Set_Rdy_Flag)
    {      
-      if (Timer - Timer_Temp  > 1) Config_Rdy_Timer = 0;    //To make sure these increments are consecutive
-      else  Config_Rdy_Timer++;      
+      if (Timer - Timer_Temp  > 1) Config_Set_Rdy_Timer = 0;    //To make sure these increments are consecutive
+      else  Config_Set_Rdy_Timer++;      
       Timer_Temp = Timer;
    }
-   if (Config_Rdy_Timer > HALF_SECOND)
+   if (PIND2 == 0)
+   {
+      if (Timer - Timer_Temp  > 1) Config_Change_Rdy_Timer = 0;    //To make sure these increments are consecutive
+      else  Config_Change_Rdy_Timer++;      
+      Timer_Temp = Timer;
+   }
+   if (Config_Set_Rdy_Timer > HALF_SECOND)
    {
       Pwm_Config();
-      Config_Rdy_Flag = 0;
-      Config_Rdy_Timer = 0;
+      Config_Set_Rdy_Flag = 0;
+      Config_Set_Rdy_Timer = 0;
    }   
+   if (Config_Change_Rdy_Timer > HALF_SECOND)
+   {
+      Config_Change_Rdy_Timer = 1;
+      Config_Set_Rdy_Timer = 0;
+   }  
 }
 
 
 void Pwm_Config()
 {
-  //Need to make sure the pins are LOW prior to and after setting them to outputs so don't accidentally cause short in IPM.
-  DDRD = (1 << DDRD6) | (1 << DDRD5) | (1 << DDRD3); //Sets the OC0A, OC0B and OC2B pins to outputs
-  DDRB = (1 << DDRB3) | (1 << DDRB2) | (1 << DDRB1); //Sets the OC2A, OC1B and OC1A pins to outputs
-  cli();                      //Disable interrupts
-  CLKPR = (1 << CLKPCE);      //Enable change of the clock prescaler
-  CLKPR = (1 << CLKPS0);      //Set system clock prescaler to 2
-  //Timer 0
-  TCNT0 = 0;                  //Zero counter of timer 0
-  TCCR0A = (1 << COM0A1) | (1 << COM0B1) | (1 << COM0B0) | (1 << WGM00); // Clear OC0A and set OC0B counting up. Waveform mode 1 (Table 14-8)
-  TCCR0B = (1 << CS00);       //No prescaler
-  TIMSK0 = (1 << TOIE0);      //Timer/Counter0 Overflow Interrupt Enable
-  OCR0A = Sine[0] - DT;   //Sign determined by set or clear at count-up
-  OCR0B = Sine[0] + 2*DT;   //Sign determined by set or clear at count-up
-  // Timer 1
-  TCNT1 = 0;                  //Zero counter of timer 0
-  TCCR1A = (1 << COM1A1) | (1 << COM1B1) | (1 << COM1B0) | (1 << WGM10); // Clear OC1A and set OC1B counting up. Waveform mode 1 (Table 14-8)
-  TCCR1B = (1 << CS10);       //No prescaler
-  OCR1A = Sine[count120] - DT;   //Sign determined by set or clear at count-up
-  OCR1B = Sine[count120] + 2*DT;   //Sign determined by set or clear at count-up
-  // Timer 2
-  TCNT2 = 0;                  //Zero counter of timer 0
-  TCCR2A = (1 << COM2A1) | (1 << COM2B1) | (1 << COM2B0) | (1 << WGM20); // Clear OC0A and set OC0B counting up. Waveform mode 1 (Table 14-8)
-  TCCR2B = (1 << CS20);       //No prescaler
-  OCR2A = Sine[count240] - DT;   //Sign determined by set or clear at count-up
-  OCR2B = Sine[count240] + 2*DT;   //Sign determined by set or clear at count-up
-  sei();
+   //Need to make sure the pins are LOW prior to and after setting them to outputs so don't accidentally cause short in IPM.
+   DDRD = (1 << DDRD6) | (1 << DDRD5) | (1 << DDRD3); //Sets the OC0A, OC0B and OC2B pins to outputs
+   DDRB = (1 << DDRB3) | (1 << DDRB2) | (1 << DDRB1); //Sets the OC2A, OC1B and OC1A pins to outputs
+   if (Phase_Config == 1)
+   {
+      cli();                      //Disable interrupts
+      CLKPR = (1 << CLKPCE);      //Enable change of the clock prescaler
+      CLKPR = (1 << CLKPS0);      //Set system clock prescaler to 2
+      //Timer 0
+      TCNT0 = 0;                  //Zero counter of timer 0
+      TCCR0A = (1 << COM0A1) | (1 << COM0B1) | (1 << COM0B0) | (1 << WGM00); // Clear OC0A and set OC0B counting up. Waveform mode 1 (Table 14-8)
+      TCCR0B = (1 << CS00);       //No prescaler
+      TIMSK0 = (1 << TOIE0);      //Timer/Counter0 Overflow Interrupt Enable
+      OCR0A = 0;   //Sign determined by set or clear at count-up
+      OCR0B = 127;   //Sign determined by set or clear at count-up
+      // Timer 1
+      TCNT1 = 0;                  //Zero counter of timer 0
+      TCCR1A = (1 << COM1A1) | (1 << COM1B1) | (1 << COM1B0) | (1 << WGM10); // Clear OC1A and set OC1B counting up. Waveform mode 1 (Table 14-8)
+      TCCR1B = (1 << CS10);       //No prescaler
+      OCR1A = 0;   //Sign determined by set or clear at count-up
+      OCR1B = 127;   //Sign determined by set or clear at count-up
+      // Timer 2
+      TCNT2 = 0;                  //Zero counter of timer 0
+      TCCR2A = (1 << COM2A1) | (1 << COM2B1) | (1 << COM2B0) | (1 << WGM20); // Clear OC0A and set OC0B counting up. Waveform mode 1 (Table 14-8)
+      TCCR2B = (1 << CS20);       //No prescaler
+      OCR2A = 0;   //Sign determined by set or clear at count-up
+      OCR2B = 127;   //Sign determined by set or clear at count-up
+      sei();
+   }
+   else if (Phase_Config == 2)      //Change relevent to 1 phase*************************
+   {
+      cli();                      //Disable interrupts
+      CLKPR = (1 << CLKPCE);      //Enable change of the clock prescaler
+      CLKPR = (1 << CLKPS0);      //Set system clock prescaler to 2
+      //Timer 0
+      TCNT0 = 0;                  //Zero counter of timer 0
+      TCCR0A = (1 << COM0A1) | (1 << COM0B1) | (1 << COM0B0) | (1 << WGM00); // Clear OC0A and set OC0B counting up. Waveform mode 1 (Table 14-8)
+      TCCR0B = (1 << CS00);       //No prescaler
+      TIMSK0 = (1 << TOIE0);      //Timer/Counter0 Overflow Interrupt Enable
+      OCR0A = Sine[0] - DT;   //Sign determined by set or clear at count-up
+      OCR0B = Sine[0] + 2*DT;   //Sign determined by set or clear at count-up
+      // Timer 1
+      TCNT1 = 0;                  //Zero counter of timer 0
+      TCCR1A = (1 << COM1A1) | (1 << COM1B1) | (1 << COM1B0) | (1 << WGM10); // Clear OC1A and set OC1B counting up. Waveform mode 1 (Table 14-8)
+      TCCR1B = (1 << CS10);       //No prescaler
+      OCR1A = Sine[count120] - DT;   //Sign determined by set or clear at count-up
+      OCR1B = Sine[count120] + 2*DT;   //Sign determined by set or clear at count-up
+      // Timer 2
+      TCNT2 = 0;                  //Zero counter of timer 0
+      TCCR2A = (1 << COM2A1) | (1 << COM2B1) | (1 << COM2B0) | (1 << WGM20); // Clear OC0A and set OC0B counting up. Waveform mode 1 (Table 14-8)
+      TCCR2B = (1 << CS20);       //No prescaler
+      OCR2A = Sine[count240] - DT;   //Sign determined by set or clear at count-up
+      OCR2B = Sine[count240] + 2*DT;   //Sign determined by set or clear at count-up
+      sei();
+   }
+
 }
 
 
 
 ISR (TIMER0_OVF_vect)
-{
-  Desired_Freq = 100;
-  OVF_Counter++;
-  if (OVF_Counter >= (BASE_FREQ / Desired_Freq))
-  {
-    Sine_Index++;
-    Sine_Index_120++;
-    Sine_Index_240++;
-    if (Sine_Index == Sine_Len) Sine_Index = 0;
-    if (Sine_Index_120 == Sine_Len) Sine_Index_120 = 0;
-    if (Sine_Index_240 == Sine_Len) Sine_Index_240 = 0;    
-    //  
-    if ((Sine[Sine_Index] - DT) < 0) OCR0A = 0;
-    else  OCR0A = Sine[Sine_Index] - DT;  //Sign determined by set or clear at count-up
-    OCR0B = Sine[Sine_Index] + 2*DT;  //Sign determined by set or clear at count-up
-    //
-    OCR1A = Sine[Sine_Index_120] - DT;  //Sign determined by set or clear at count-up
-    OCR1B = Sine[Sine_Index_120] + 2*DT;  //Sign determined by set or clear at count-up
-    OCR2A = Sine[Sine_Index_240] - DT;  //Sign determined by set or clear at count-up
-    OCR2B = Sine[Sine_Index_240] + 2*DT;  //Sign determined by set or clear at count-up
-    OVF_Counter = 0;
-  }
+{   
+   if (Init_PWM_Counter < 3 * ONE_MS) Init_PWM_Counter++;
+   else
+   {
+      OVF_Counter++;   
+      else if (OVF_Counter >= (BASE_FREQ / Desired_Freq))
+      {
+         if (Sine_Index == Sine_Len) Sine_Index = 0;
+         if (Sine_Index_120 == Sine_Len) Sine_Index_120 = 0;
+         if (Sine_Index_240 == Sine_Len) Sine_Index_240 = 0;    
+         //  
+         if ((Sine[Sine_Index] - DT) < 0) OCR0A = 0;
+         else  OCR0A = Sine[Sine_Index] - DT;  //Sign determined by set or clear at count-up
+         OCR0B = Sine[Sine_Index] + 2*DT;  //Sign determined by set or clear at count-up
+         //
+         OCR1A = Sine[Sine_Index_120] - DT;  //Sign determined by set or clear at count-up
+         OCR1B = Sine[Sine_Index_120] + 2*DT;  //Sign determined by set or clear at count-up
+         OCR2A = Sine[Sine_Index_240] - DT;  //Sign determined by set or clear at count-up
+         OCR2B = Sine[Sine_Index_240] + 2*DT;  //Sign determined by set or clear at count-up
+         OVF_Counter = 0;
+         Sine_Index++;
+         Sine_Index_120++;
+         Sine_Index_240++;
+      }
+   }
 }
