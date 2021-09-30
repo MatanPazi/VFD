@@ -42,6 +42,7 @@
 #define DIO1 2
 #define CLK2 13
 #define DIO2 6
+#define CURR_INPUT A0
 #define POT_INPUT A2
 //
 #define BASE_FREQ 1041                 //Hz
@@ -50,6 +51,13 @@
 #define EEPROM_PRIOR_SAVE_ADDRESS 256
 #define EEPROM_PRIOR_SAVE_VALUE 123
 #define MILLI_A_RESOLUTION 125
+#define LED_DELAY_MICRO 65000
+#define MAX_V_F 20.0
+#define MIN_V_F 2.0
+//millis() etc. disabled(?) due to use of timers in PWM.
+//Approx. time of loop ~
+#define ONE_MS   16
+#define HALF_SECOND   8000
 
 const uint8_t ONE_PHASE[] = {
     SEG_B | SEG_C,                                    // 1
@@ -61,15 +69,9 @@ const uint8_t THREE_PHASE[] = {
     SEG_A | SEG_B | SEG_E | SEG_F | SEG_G,            // P
     SEG_B | SEG_C | SEG_E | SEG_F | SEG_G             // H
     };
-const uint8_t AMPERE[] = {
-    SEG_A | SEG_B | SEG_C | SEG_E | SEG_F | SEG_G     // A
-    };
 
-//millis() etc. disabled due to use of timers in PWM.
-//Approx. time of loop ~
-#define ONE_MS   16
-#define HALF_SECOND   8000
-uint16_t Pot_Value_Shift = 0;
+
+uint16_t Curr_Value = 0;
 uint32_t Timer = 0;
 uint32_t Timer_Temp = 0;
 uint32_t Timer_Temp1 = 0;
@@ -77,25 +79,27 @@ uint32_t Init_PWM_Counter = 0;
 uint32_t Click_Timer = 0;
 uint32_t Config_Set_Rdy_Timer = 0;
 uint32_t Config_Change_Rdy_Timer = 0;
-uint8_t  Phase_Config = 0;             //1: 3 phase, 2: 1 phase
-uint8_t  Click_Type = 0;               //1: Short, 2: Long
-bool  Config_Set_Rdy_Flag = 0;             //Flag to determine if V/f & phase configurations were set
-bool  Config_Change_Rdy_Flag = 0;      //Flag to determine if V/f & phase configurations are ready to be set (If potentiometer switch is low long enough)
-bool  PWM_Running = 0;                 //Indicates if the PWM is operating or not
-float V_f = 1.0;                       //Voltage to frequency value of the motor
+uint8_t  Click_Type = 0;                  //1: Short, 2: Long
+bool  Phase_Config = 0;                   //0: 3 phase, 1: 1 phase
+bool  Config_Displayed = 0;               //What configuration is seen at the moment. 0: Phase #, 1:V/f
+bool  Config_Set_Rdy_Flag = 0;            //Flag to determine if V/f & phase configurations were set
+bool  Config_Change_Rdy_Flag = 0;         //Flag to determine if V/f & phase configurations are ready to be set (If potentiometer switch is low long enough)
+bool  PWM_Running = 0;                    //Indicates if the PWM is operating or not
+bool  Config_Editable = 0;                //Is the configuration editable or not (Between 2 long clicks)
+float V_f = MIN_V_F;                      //Voltage to frequency value of the motor
 //Sine wave index variables
 volatile uint8_t Sine_Index = 0;
 volatile uint8_t Sine_Index_120 = 5;
 volatile uint8_t Sine_Index_240 = 10;
 //
-volatile uint8_t Desired_Freq = 100;     //Desired freq [Hz]
-volatile uint32_t OVF_Counter = 0;     //Increments every overflow
-const unsigned char DT = 1;            //Dead time to prevent short-circuit betweem high & low mosfets
-const unsigned char Sine_Len = 15;     //Sine table length
+volatile uint8_t Desired_Freq = 100;      //Desired freq [Hz]
+volatile uint32_t OVF_Counter = 0;        //Increments every overflow
+const unsigned char DT = 1;               //Dead time to prevent short-circuit betweem high & low mosfets
+const unsigned char Sine_Len = 15;        //Sine table length
 const unsigned char Sine[] = {0x7f,0xb5,0xe1,0xfa,0xfa,0xe1,0xb5,0x7f,0x48,0x1c,0x3,0x3,0x1c,0x48,0x7f};
 
-TM1637Display Display1(CLK1, DIO1);
-TM1637Display Display2(CLK2, DIO2);
+TM1637Display Display1(CLK1, DIO1, LED_DELAY_MICRO);
+TM1637Display Display2(CLK2, DIO2, LED_DELAY_MICRO);
 
 void setup()
 {
@@ -115,8 +119,7 @@ void setup()
 }
 void loop()
 {   
-   Pot_Value_Shift = (analogRead(POT_INPUT) >> 16);    //a value of 1023 -> 8[A], so 1023 >> 16 will give a resolution of 125[mA]
-   Pot_Value_Shift = Pot_Value_Shift * MILLI_A_RESOLUTION;   
+   Curr_Value = (analogRead(CURR_INPUT) >> 6);     //A value of 1023 (5V) -> 8000[mA], so 1023 << 3. Gives a resolution of 8[mA] allegedly.
    Pot_Switch_State_Check();
    if (Config_Change_Rdy_Flag)
    {
@@ -129,6 +132,43 @@ void loop()
    
    
   
+}
+
+
+void Display(bool PWM_Running, uint8_t Display_Num, bool Blink, uint16_t Delay)
+{
+   if (PWM_Running)
+   {
+      if (Display_Num == 1)
+      {
+         if (Freq > 999) Display1.showNumberDec(Freq, false, 4, 0);
+         else if (Freq > 99) Display1.showNumberDec(Freq, false, 3, 0);
+         else (Freq > 9) Display1.showNumberDec(Freq, false, 2, 0);         
+      }
+      else if (Display_Num == 2)
+      {
+         if (val > 999) Display2.showNumberDec(val, false, 4, 0);
+         else if (val > 99) Display2.showNumberDec(val, false, 3, 0);
+         else if (val > 9) Display2.showNumberDec(val, false, 2, 0);
+         else Display2.showNumberDec(val, false, 1, 0);
+      }   
+   }
+   else
+   {
+      while (Delay != 0) Delay--;
+      if (Config_Displayed)
+      {
+         uint8_t V_f_Display = V_f * 10.0;
+         if (Blink) Display1.clear();
+         if (V_f_Display > 99) Display1.showNumberDec(V_f_Display, false, 3, 0);
+         else (V_f_Display > 9) Display1.showNumberDec(V_f_Display, false, 2, 0);         
+      }
+      else
+      {
+      }
+
+      
+   }
 }
 
 void Button_Click()
@@ -145,7 +185,29 @@ void Button_Click()
       else if (Click_Timer > 2 * HALF_SECOND) Click_Type = 2;         
       Click_Timer = 0;
    }   
-   
+   if (Click_Type == 2)
+   {
+      Config_Editable = !Config_Editable;    //Toggle
+      Click_Type = 0;
+   }
+   else if (Click_Type == 1)
+   {
+      if (Config_Editable)
+      {
+         if (Config_Displayed)
+         {
+            V_f += 0.1;
+            if (V_f > MAX_V_F) V_f = MIN_V_F;
+         }
+         else Phase_Config = !Phase_Config;
+      }
+      else
+      {
+         Config_Displayed = !Config_Displayed;
+      } 
+      Click_Type = 0;
+   }
+   Display(bool PWM_Running, uint8_t Display_Num, bool Blink)
 }
 
 
@@ -171,8 +233,7 @@ void Pot_Switch_State_Check()
    }
    if (Config_Set_Rdy_Timer > HALF_SECOND)
    {
-      Pwm_Config();
-      
+      Pwm_Config();      
       Config_Set_Rdy_Timer = 0;
    }   
    if (Config_Change_Rdy_Timer > HALF_SECOND)
