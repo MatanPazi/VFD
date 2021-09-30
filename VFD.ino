@@ -57,17 +57,20 @@
 //millis() etc. disabled(?) due to use of timers in PWM.
 //Approx. time of loop ~
 #define ONE_MS   16
+#define HUNDRED_MS   160
 #define HALF_SECOND   8000
 
 const uint8_t ONE_PHASE[] = {
     SEG_B | SEG_C,                                    // 1
     SEG_A | SEG_B | SEG_E | SEG_F | SEG_G,            // P
     SEG_B | SEG_C | SEG_E | SEG_F | SEG_G             // H
+    0,                                                // space
     };
 const uint8_t THREE_PHASE[] = {
     SEG_A | SEG_B | SEG_C | SEG_D | SEG_G,            // 3
     SEG_A | SEG_B | SEG_E | SEG_F | SEG_G,            // P
     SEG_B | SEG_C | SEG_E | SEG_F | SEG_G             // H
+    0,                                                // space
     };
 
 
@@ -165,9 +168,10 @@ void Display(bool PWM_Running, uint8_t Display_Num, bool Blink, uint16_t Delay)
       }
       else
       {
-      }
-
-      
+         if (Blink) Display1.clear();
+         if (Phase_Config) Display1.setSegments(ONE_PHASE);
+         else Display1.setSegments(THREE_PHASE);
+      }      
    }
 }
 
@@ -207,7 +211,7 @@ void Button_Click()
       } 
       Click_Type = 0;
    }
-   Display(bool PWM_Running, uint8_t Display_Num, bool Blink)
+   Display(PWM_Running, 1, Config_Editable, HUNDRED_MS)
 }
 
 
