@@ -63,13 +63,13 @@
 const uint8_t ONE_PHASE[] = {
     SEG_B | SEG_C,                                    // 1
     SEG_A | SEG_B | SEG_E | SEG_F | SEG_G,            // P
-    SEG_B | SEG_C | SEG_E | SEG_F | SEG_G             // H
+    SEG_B | SEG_C | SEG_E | SEG_F | SEG_G,            // H
     0,                                                // space
     };
 const uint8_t THREE_PHASE[] = {
     SEG_A | SEG_B | SEG_C | SEG_D | SEG_G,            // 3
     SEG_A | SEG_B | SEG_E | SEG_F | SEG_G,            // P
-    SEG_B | SEG_C | SEG_E | SEG_F | SEG_G             // H
+    SEG_B | SEG_C | SEG_E | SEG_F | SEG_G,            // H
     0,                                                // space
     };
 
@@ -144,16 +144,14 @@ void Display(bool PWM_Running, uint8_t Display_Num, bool Blink, uint16_t Delay)
    {
       if (Display_Num == 1)
       {
-         if (Freq > 999) Display1.showNumberDec(Freq, false, 4, 0);
-         else if (Freq > 99) Display1.showNumberDec(Freq, false, 3, 0);
-         else (Freq > 9) Display1.showNumberDec(Freq, false, 2, 0);         
+         if (Desired_Freq > 999) Display1.showNumberDec(Desired_Freq, false, 4, 0);
+         else if (Desired_Freq > 99) Display1.showNumberDec(Desired_Freq, false, 3, 0);
+         else Display1.showNumberDec(Desired_Freq, false, 2, 0);         
       }
       else if (Display_Num == 2)
       {
-         if (val > 999) Display2.showNumberDec(val, false, 4, 0);
-         else if (val > 99) Display2.showNumberDec(val, false, 3, 0);
-         else if (val > 9) Display2.showNumberDec(val, false, 2, 0);
-         else Display2.showNumberDec(val, false, 1, 0);
+         if (Curr_Value > 999) Display2.showNumberDec(Curr_Value, false, 4, 0);
+         else Display2.showNumberDec(Curr_Value, false, 3, 0);         
       }   
    }
    else
@@ -164,7 +162,7 @@ void Display(bool PWM_Running, uint8_t Display_Num, bool Blink, uint16_t Delay)
          uint8_t V_f_Display = V_f * 10.0;
          if (Blink) Display1.clear();
          if (V_f_Display > 99) Display1.showNumberDec(V_f_Display, false, 3, 0);
-         else (V_f_Display > 9) Display1.showNumberDec(V_f_Display, false, 2, 0);         
+         else Display1.showNumberDec(V_f_Display, false, 2, 0);         
       }
       else
       {
@@ -211,7 +209,7 @@ void Button_Click()
       } 
       Click_Type = 0;
    }
-   Display(PWM_Running, 1, Config_Editable, HUNDRED_MS)
+   Display(PWM_Running, 1, Config_Editable, HUNDRED_MS);
 }
 
 
@@ -266,8 +264,8 @@ void Pwm_Config()
 {
    //Need to make sure the pins are LOW prior to and after setting them to outputs so don't accidentally cause short in IPM.
    PWM_Running = 1;
-   DDRD = (1 << DDRD6) | (1 << DDRD5) | (1 << DDRD3); //Sets the OC0A, OC0B and OC2B pins to outputs
-   DDRB = (1 << DDRB3) | (1 << DDRB2) | (1 << DDRB1); //Sets the OC2A, OC1B and OC1A pins to outputs
+   DDRD = (1 << DDD6) | (1 << DDD5) | (1 << DDD3); //Sets the OC0A, OC0B and OC2B pins to outputs
+   DDRB = (1 << DDB3) | (1 << DDB2) | (1 << DDB1); //Sets the OC2A, OC1B and OC1A pins to outputs
    if (Phase_Config == 1)
    {
       cli();                      //Disable interrupts
@@ -310,14 +308,14 @@ void Pwm_Config()
       TCNT1 = 0;                  //Zero counter of timer 0
       TCCR1A = (1 << COM1A1) | (1 << COM1B1) | (1 << COM1B0) | (1 << WGM10); // Clear OC1A and set OC1B counting up. Waveform mode 1 (Table 14-8)
       TCCR1B = (1 << CS10);       //No prescaler
-      OCR1A = Sine[count120] - DT;   //Sign determined by set or clear at count-up
-      OCR1B = Sine[count120] + 2*DT;   //Sign determined by set or clear at count-up
+      OCR1A = Sine[Sine_Index_120] - DT;   //Sign determined by set or clear at count-up
+      OCR1B = Sine[Sine_Index_120] + 2*DT;   //Sign determined by set or clear at count-up
       // Timer 2
       TCNT2 = 0;                  //Zero counter of timer 0
       TCCR2A = (1 << COM2A1) | (1 << COM2B1) | (1 << COM2B0) | (1 << WGM20); // Clear OC0A and set OC0B counting up. Waveform mode 1 (Table 14-8)
       TCCR2B = (1 << CS20);       //No prescaler
-      OCR2A = Sine[count240] - DT;   //Sign determined by set or clear at count-up
-      OCR2B = Sine[count240] + 2*DT;   //Sign determined by set or clear at count-up
+      OCR2A = Sine[Sine_Index_240] - DT;   //Sign determined by set or clear at count-up
+      OCR2B = Sine[Sine_Index_240] + 2*DT;   //Sign determined by set or clear at count-up
       sei();
    }
 
@@ -331,7 +329,7 @@ ISR (TIMER0_OVF_vect)
    else
    {
       OVF_Counter++;   
-      else if (OVF_Counter >= (BASE_FREQ / Desired_Freq))
+      if (OVF_Counter >= (BASE_FREQ / Desired_Freq))
       {
          if (Sine_Index == Sine_Len) Sine_Index = 0;
          if (Sine_Index_120 == Sine_Len) Sine_Index_120 = 0;
