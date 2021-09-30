@@ -54,6 +54,9 @@
 #define LED_DELAY_MICRO 65000
 #define MAX_V_F 20.0
 #define MIN_V_F 2.0
+#define MIN_FREQ 20
+#define MIN_AMP 0.1
+#define MAX_AMP 1.0
 #define THREE_PH 0
 #define ONE_PH 1
 //millis() etc. disabled(?) due to use of timers in PWM.
@@ -75,7 +78,6 @@ const uint8_t THREE_PHASE[] = {
     0,                                                // space
     };
 
-
 uint16_t Curr_Value = 0;
 uint32_t Timer = 0;
 uint32_t Timer_Temp = 0;
@@ -92,12 +94,13 @@ bool  Config_Change_Rdy_Flag = 0;         //Flag to determine if V/f & phase con
 bool  PWM_Running = 0;                    //Indicates if the PWM is operating or not
 bool  Config_Editable = 0;                //Is the configuration editable or not (Between 2 long clicks)
 float V_f = MIN_V_F;                      //Voltage to frequency value of the motor
+float Amp = 1.0;                          //Voltage to frequency value of the motor
 //Sine wave index variables
 volatile uint8_t Sine_Index = 0;
 volatile uint8_t Sine_Index_120 = 5;
 volatile uint8_t Sine_Index_240 = 10;
 //
-volatile uint8_t Desired_Freq = 100;      //Desired freq [Hz]
+volatile uint8_t Desired_Freq = 10;      //Desired freq [Hz]
 volatile uint32_t OVF_Counter = 0;        //Increments every overflow
 const unsigned char DT = 1;               //Dead time to prevent short-circuit betweem high & low mosfets
 const unsigned char Sine_Len = 15;        //Sine table length
@@ -124,7 +127,12 @@ void setup()
 }
 void loop()
 {   
-   Curr_Value = (analogRead(CURR_INPUT) >> 6);     //A value of 1023 (5V) -> 8000[mA], so 1023 << 3. Gives a resolution of 8[mA] allegedly.
+   Curr_Value = (analogRead(CURR_INPUT) << 3);           //A value of 1023 (5V) -> 8000[mA], so 1023 << 3. Gives a resolution of 8[mA] allegedly.
+   Desired_Freq = (analogRead(POT_INPUT) >> 3)           //A value of 1023 (5V) -> 128[Hz]
+   if (Desired_Freq < MIN_FREQ) Desired_Freq = MIN_FREQ;
+   Amp = Desired_Freq * V_f
+   if (Amp < MIN_AMP) Amp = MIN_AMP;      
+   else if (Amp > MAX_AMP) Amp = MAX;
    Pot_Switch_State_Check();
    if (Config_Change_Rdy_Flag)
    {
@@ -133,10 +141,7 @@ void loop()
    //function: If PIND2==LOW for more than half second, on a rising edge of PINB4 (low and high states are long enough) due the following:
    //If the low state was longer than 1 sec, turn to config state
    //Otherwise, cycle between possible configurations
-   Timer++;
-   
-   
-  
+   Timer++;    
 }
 
 
