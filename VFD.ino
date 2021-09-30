@@ -128,11 +128,11 @@ void setup()
 void loop()
 {   
    Curr_Value = (analogRead(CURR_INPUT) << 3);           //A value of 1023 (5V) -> 8000[mA], so 1023 << 3. Gives a resolution of 8[mA] allegedly.
-   Desired_Freq = (analogRead(POT_INPUT) >> 3)           //A value of 1023 (5V) -> 128[Hz]
+   Desired_Freq = (analogRead(POT_INPUT) >> 3);          //A value of 1023 (5V) -> 128[Hz]
    if (Desired_Freq < MIN_FREQ) Desired_Freq = MIN_FREQ;
-   Amp = Desired_Freq * V_f
+   Amp = Desired_Freq * V_f;
    if (Amp < MIN_AMP) Amp = MIN_AMP;      
-   else if (Amp > MAX_AMP) Amp = MAX;
+   else if (Amp > MAX_AMP) Amp = MAX_AMP;
    Pot_Switch_State_Check();
    if (Config_Change_Rdy_Flag)
    {
