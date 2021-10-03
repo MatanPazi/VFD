@@ -44,14 +44,7 @@
 #define CURR_INPUT A0
 #define POT_INPUT A2
 //
-#define BASE_FREQ 1041                 //Hz
-#define MILLI_A_RESOLUTION 125
 #define LED_DELAY_MICRO 65000
-#define V_F 3.8333
-#define VBUS 230.0      //[VAC]
-#define MIN_FREQ 20
-#define MIN_AMP 0.1
-#define MAX_AMP 1.0
 #define THREE_PH 0
 #define ONE_PH 1
 //millis() etc. disabled(?) due to use of timers in PWM.
@@ -92,12 +85,19 @@ volatile uint8_t Sine_Index = 0;
 volatile uint8_t Sine_Index_120 = 5;
 volatile uint8_t Sine_Index_240 = 10;
 //
-volatile uint8_t Desired_Freq = 10;      //Desired freq [Hz]
+volatile uint8_t Desired_Freq = 10;       //Desired freq [Hz]
 volatile uint32_t OVF_Counter = 0;        //Increments every overflow
-const unsigned char DT = 1;               //Dead time to prevent short-circuit betweem high & low mosfets
-const unsigned char Sine_Len = 15;        //Sine table length
+const unsigned uint8_t Min_Freq = 20
+const unsigned uint8_t Milli_A_Resolution = 125
+const uint16_t Base_Freq = 1041             //Hz
+const float V_f = 3.8333                    //V/f value
+const float VBus = 230.0                    //[VAC]
+const float Min_Amp = 0.1
+const float Max_Amp = 1.0
+const uint8_t DT = 1;                     //Dead time to prevent short-circuit betweem high & low mosfets
+const uint8_t Sine_Len = 15;              //Sine table length
 // Generated using https://www.daycounter.com/Calculators/Sine-Generator-Calculator.phtml
-const unsigned char Sine[] = {0x7f,0xb5,0xe1,0xfa,0xfa,0xe1,0xb5,0x7f,0x48,0x1c,0x3,0x3,0x1c,0x48,0x7f};
+const uint8_t Sine[] = {0x7f,0xb5,0xe1,0xfa,0xfa,0xe1,0xb5,0x7f,0x48,0x1c,0x3,0x3,0x1c,0x48,0x7f};
 
 TM1637Display Display1(CLK1, DIO1, LED_DELAY_MICRO);
 TM1637Display Display2(CLK2, DIO2, LED_DELAY_MICRO);
@@ -116,10 +116,10 @@ void loop()
 {   
    Curr_Value = (analogRead(CURR_INPUT) << 3);           //A value of 1023 (5V) -> 8000[mA], so 1023 << 3. Gives a resolution of 8[mA] allegedly.
    Desired_Freq = (analogRead(POT_INPUT) >> 3);          //A value of 1023 (5V) -> 128[Hz]
-   if (Desired_Freq < MIN_FREQ) Desired_Freq = MIN_FREQ;
-   Amp = (float(Desired_Freq) * V_F) / VBUS;
-   if (Amp < MIN_AMP) Amp = MIN_AMP;      
-   else if (Amp > MAX_AMP) Amp = MAX_AMP;
+   if (Desired_Freq < Min_Freq) Desired_Freq = Min_Freq;
+   Amp = (float(Desired_Freq) * V_f) / VBus;
+   if (Amp < Min_Amp) Amp = Min_Amp;      
+   else if (Amp > Max_Amp) Amp = Max_Amp;
    Pot_Switch_State_Check();
    Button_Click();
 
@@ -301,7 +301,7 @@ ISR (TIMER0_OVF_vect)
    else
    {
       OVF_Counter++;   
-      if (OVF_Counter >= (BASE_FREQ / Desired_Freq))
+      if (OVF_Counter >= (Base_Freq / Desired_Freq))
       {
          if (Sine_Index == Sine_Len) Sine_Index = 0;
          if (Sine_Index_120 == Sine_Len) Sine_Index_120 = 0;
