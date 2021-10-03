@@ -1,16 +1,15 @@
-/* 32 sample sine wave look up table.
+/* 15 sample sine wave look up table.
    16Mhz CPU clk & clkI/O -> Prescaler of 2 -> 8Mhz
    1 OVF scenario will occur every 256 * 2 = 512 samples.
    1/8MHz * 512 = 64[us]
    going over the 15 sample look-up table will take 64us * 15 = 0.96[ms] -> 1,041.66[Hz]
    I'm aiming for 100[Hz] and below.
-   So to achieve a 100[Hz] sine wave, I will need to increment in the sine table every
+   So to achieve a 100[Hz] sine wave, I will need to increment the sine table every
    1,041.66 / 100 = 10.41 OVF scenarios
    for 90[Hz] -> 1,041.66 / 90 = 11.57 OVF scenarios etc.
-   Lower frequency resolution at higher frequencies since using byte data type (Rounded to a whole number)
-   The amplitude will be attenuated by multiplying the sine table values by
-   the desired frequency divided by the base frequency (60 OR 50 [Hz]) in order to maintain a constant V/Hz value.
-   For 40 [Hz], the amplitude will be attenuated by 40/60 = 2/3.
+   Lower resolution at higher frequencies (Rounded to a whole number)
+   The amplitude will be derived from the desired frequency and the V/f value (230[VAC]/60[Hz]=3.8333), with a minimum and maximum value.
+   For example, w/ a desired freq of 30[Hz], the amplitude will be (3.8333 * 30) / 230 = 0.5
    Due to low resolution of compare registers (only 1 byte), attenuating by dividing the sine table values
    will eventually lead to a distorted sine wave.
    Consider the following to overcome the distorted sine wave issue:
