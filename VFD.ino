@@ -45,14 +45,10 @@
 #define POT_INPUT A2
 //
 #define BASE_FREQ 1041                 //Hz
-#define PHASE_CONFIG_ADDRESS 0
-#define V_F_CONFIG_ADDRESS 1
-#define EEPROM_PRIOR_SAVE_ADDRESS 256
-#define EEPROM_PRIOR_SAVE_VALUE 123
 #define MILLI_A_RESOLUTION 125
 #define LED_DELAY_MICRO 65000
-#define MAX_V_F 20.0
-#define MIN_V_F 2.0
+#define V_F 3.8333
+#define VBUS 230.0      //[VAC]
 #define MIN_FREQ 20
 #define MIN_AMP 0.1
 #define MAX_AMP 1.0
@@ -83,13 +79,10 @@ uint32_t Timer_Temp = 0;
 uint32_t Timer_Temp1 = 0;
 uint32_t Init_PWM_Counter = 0;
 uint32_t Click_Timer = 0;
-uint32_t Config_Set_Rdy_Timer = 0;
-uint32_t Config_Change_Rdy_Timer = 0;
+uint32_t Pot_Switch_Off_Timer = 0;
+uint32_t Pot_Switch_On_Timer = 0;
 uint8_t  Click_Type = 0;                  //1: Short, 2: Long
 bool  Phase_Config = 0;                   //0: 3 phase, 1: 1 phase
-bool  Config_Displayed = 0;               //What configuration is seen at the moment. 0: Phase #, 1:V/f
-bool  Config_Set_Rdy_Flag = 0;            //Flag to determine if V/f & phase configurations were set
-bool  Config_Change_Rdy_Flag = 0;         //Flag to determine if V/f & phase configurations are ready to be set (If potentiometer switch is low long enough)
 bool  PWM_Running = 0;                    //Indicates if the PWM is operating or not
 bool  Config_Editable = 0;                //Is the configuration editable or not (Between 2 long clicks)
 float V_f = MIN_V_F;                      //Voltage to frequency value of the motor
@@ -103,6 +96,7 @@ volatile uint8_t Desired_Freq = 10;      //Desired freq [Hz]
 volatile uint32_t OVF_Counter = 0;        //Increments every overflow
 const unsigned char DT = 1;               //Dead time to prevent short-circuit betweem high & low mosfets
 const unsigned char Sine_Len = 15;        //Sine table length
+// Generated using https://www.daycounter.com/Calculators/Sine-Generator-Calculator.phtml
 const unsigned char Sine[] = {0x7f,0xb5,0xe1,0xfa,0xfa,0xe1,0xb5,0x7f,0x48,0x1c,0x3,0x3,0x1c,0x48,0x7f};
 
 TM1637Display Display1(CLK1, DIO1, LED_DELAY_MICRO);
@@ -117,26 +111,18 @@ void setup()
    PORTD = (1 << PORTD2);     //Activates internal pull up for PD2. Default pin state is input. Potentiometer switch
    PORTB = (1 << PORTB4);     //Activates internal pull up for PB4. Default pin state is input. Tactile switch
    DDRB = (1 << DDB0);       //Sets PB0 pin to output (Default is LOW). Commands the relay
-   if (EEPROM.read(EEPROM_PRIOR_SAVE_ADDRESS) == EEPROM_PRIOR_SAVE_VALUE)
-   {
-     EEPROM.get(PHASE_CONFIG_ADDRESS, Phase_Config);
-     EEPROM.get(V_F_CONFIG_ADDRESS, V_f);      
-     Config_Set_Rdy_Flag = 1;
-   }
 }
 void loop()
 {   
    Curr_Value = (analogRead(CURR_INPUT) << 3);           //A value of 1023 (5V) -> 8000[mA], so 1023 << 3. Gives a resolution of 8[mA] allegedly.
    Desired_Freq = (analogRead(POT_INPUT) >> 3);          //A value of 1023 (5V) -> 128[Hz]
    if (Desired_Freq < MIN_FREQ) Desired_Freq = MIN_FREQ;
-   Amp = Desired_Freq * V_f;
+   Amp = (float(Desired_Freq) * V_F) / VBUS;
    if (Amp < MIN_AMP) Amp = MIN_AMP;      
    else if (Amp > MAX_AMP) Amp = MAX_AMP;
    Pot_Switch_State_Check();
-   if (Config_Change_Rdy_Flag)
-   {
-      Button_Click();
-   }
+   Button_Click();
+
    //function: If PIND2==LOW for more than half second, on a rising edge of PINB4 (low and high states are long enough) due the following:
    //If the low state was longer than 1 sec, turn to config state
    //Otherwise, cycle between possible configurations
@@ -163,19 +149,9 @@ void Display(bool PWM_Running, uint8_t Display_Num, bool Blink, uint16_t Delay)
    else
    {
       while (Delay != 0) Delay--;
-      if (Config_Displayed)
-      {
-         uint8_t V_f_Display = V_f * 10.0;
-         if (Blink) Display1.clear();
-         if (V_f_Display > 99) Display1.showNumberDec(V_f_Display, false, 3, 0);
-         else Display1.showNumberDec(V_f_Display, false, 2, 0);         
-      }
-      else
-      {
-         if (Blink) Display1.clear();
-         if (Phase_Config) Display1.setSegments(ONE_PHASE);
-         else Display1.setSegments(THREE_PHASE);
-      }      
+      if (Blink) Display1.clear();
+      if (Phase_Config) Display1.setSegments(ONE_PHASE);
+      else Display1.setSegments(THREE_PHASE);     
    }
 }
 
@@ -202,17 +178,8 @@ void Button_Click()
    {
       if (Config_Editable)
       {
-         if (Config_Displayed)
-         {
-            V_f += 0.1;
-            if (V_f > MAX_V_F) V_f = MIN_V_F;
-         }
-         else Phase_Config = !Phase_Config;
+         Phase_Config = !Phase_Config;
       }
-      else
-      {
-         Config_Displayed = !Config_Displayed;
-      } 
       Click_Type = 0;
    }
    Display(PWM_Running, 1, Config_Editable, HUNDRED_MS);
@@ -221,34 +188,37 @@ void Button_Click()
 
 void Pot_Switch_State_Check()
 {
-   if (PIND2)     //Potnetiometer switch ON
+   if (PIND2)     //Potentiometer switch ON
    {      
-      if (Config_Set_Rdy_Flag && (!PWM_Running))
+      if (!PWM_Running)    //If PWM isn't running
       {
-         if (Timer - Timer_Temp  > 1) Config_Set_Rdy_Timer = 0;    //To make sure these increments are consecutive
-         else  Config_Set_Rdy_Timer++;      
+         if (Timer - Timer_Temp  > 1) Pot_Switch_On_Timer = 0;    //To make sure these increments are consecutive
+         else  Pot_Switch_On_Timer++;      
          Timer_Temp = Timer;
+         Pot_Switch_Off_Timer = 0;
       }
-      Config_Change_Rdy_Timer = 0;
-      Config_Change_Rdy_Flag = 0;
    }
    else           //Potentiometer switch OFF
    {
-      if (Timer - Timer_Temp  > 1) Config_Change_Rdy_Timer = 0;    //To make sure these increments are consecutive
-      else  Config_Change_Rdy_Timer++;      
-      Timer_Temp = Timer;
-      Config_Set_Rdy_Timer = 0;
-   }
-   if (Config_Set_Rdy_Timer > HALF_SECOND)
+      if (PWM_Running)     //If PWM is running
+      {
+         if (Timer - Timer_Temp  > 1) Pot_Switch_Off_Timer = 0;      //To make sure these increments are consecutive
+         else  Pot_Switch_Off_Timer++;      
+         Timer_Temp = Timer;
+         Pot_Switch_On_Timer = 0;
+      }
+   }   
+   if (Pot_Switch_On_Timer > HUNDRED_MS)
    {
       Pwm_Config();      
-      Config_Set_Rdy_Timer = 0;
+      Pot_Switch_On_Timer = 0;
+      Pot_Switch_Off_Timer = 0;
    }   
-   if (Config_Change_Rdy_Timer > HALF_SECOND)
+   if (Pot_Switch_Off_Timer > HUNDRED_MS)
    {
       Pwm_Disable();
-      Config_Change_Rdy_Flag = 1;
-      Config_Set_Rdy_Timer = 0;
+      Pot_Switch_On_Timer = 0;
+      Pot_Switch_Off_Timer = 0;
    }  
 }
 
@@ -256,6 +226,7 @@ void Pot_Switch_State_Check()
 void Pwm_Disable()
 {
    PWM_Running = 0;
+   Init_PWM_Counter = 0;
    cli();
    TCCR0A = 0;
    TCCR0B = 0;
@@ -268,7 +239,7 @@ void Pwm_Disable()
 
 void Pwm_Config()
 {
-   //Need to make sure the pins are LOW prior to and after setting them to outputs so don't accidentally cause short in IPM.
+   //Need to make sure the pins are LOW prior to and after setting them to outputs so don't accidentally cause short in IPM. Check in scope
    PWM_Running = 1;
    if (Phase_Config == THREE_PH)
    {
@@ -282,23 +253,23 @@ void Pwm_Config()
       TCCR0A = (1 << COM0A1) | (1 << COM0B1) | (1 << COM0B0) | (1 << WGM00); // Clear OC0A and set OC0B counting up. Waveform mode 1 (Table 14-8)
       TCCR0B = (1 << CS00);       //No prescaler
       TIMSK0 = (1 << TOIE0);      //Timer/Counter0 Overflow Interrupt Enable
-      OCR0A = 0;   //Sign determined by set or clear at count-up
-      OCR0B = 127;   //Sign determined by set or clear at count-up
+      OCR0A = 0;     //Sign determined by set or clear at count-up. High-side IGBT OFF.
+      OCR0B = 127;   //Sign determined by set or clear at count-up. Low-side IGBT 50% duty cycle to charge bootstrap cap.
       // Timer 1
       TCNT1 = 0;                  //Zero counter of timer 1
       TCCR1A = (1 << COM1A1) | (1 << COM1B1) | (1 << COM1B0) | (1 << WGM10); // Clear OC1A and set OC1B counting up. Waveform mode 1 (Table 14-8)
       TCCR1B = (1 << CS10);       //No prescaler
-      OCR1A = 0;   //Sign determined by set or clear at count-up
-      OCR1B = 127;   //Sign determined by set or clear at count-up
+      OCR1A = 0;     //Sign determined by set or clear at count-up. High-side IGBT OFF.
+      OCR1B = 127;   //Sign determined by set or clear at count-up. Low-side IGBT 50% duty cycle to charge bootstrap cap.
       // Timer 2
       TCNT2 = 0;                  //Zero counter of timer 2
       TCCR2A = (1 << COM2A1) | (1 << COM2B1) | (1 << COM2B0) | (1 << WGM20); // Clear OC0A and set OC0B counting up. Waveform mode 1 (Table 14-8)
       TCCR2B = (1 << CS20);       //No prescaler
-      OCR2A = 0;   //Sign determined by set or clear at count-up
-      OCR2B = 127;   //Sign determined by set or clear at count-up
+      OCR2A = 0;     //Sign determined by set or clear at count-up. High-side IGBT OFF.
+      OCR2B = 127;   //Sign determined by set or clear at count-up. Low-side IGBT 50% duty cycle to charge bootstrap cap.
       sei();
    }
-   else if (Phase_Config == ONE_PH)      //Change relevent to 1 phase*************************
+   else if (Phase_Config == ONE_PH)
    {
       DDRD = (1 << DDD6) | (1 << DDD5) | (1 << DDD3); //Sets the OC0A, OC0B and OC2B pins to outputs
       DDRB = (1 << DDB3);                             //Sets the OC2A pin to output
@@ -310,14 +281,14 @@ void Pwm_Config()
       TCCR0A = (1 << COM0A1) | (1 << COM0B1) | (1 << COM0B0) | (1 << WGM00); // Clear OC0A and set OC0B counting up. Waveform mode 1 (Table 14-8)
       TCCR0B = (1 << CS00);       //No prescaler
       TIMSK0 = (1 << TOIE0);      //Timer/Counter0 Overflow Interrupt Enable
-      OCR0A = 0;   //Sign determined by set or clear at count-up
-      OCR0B = 127;   //Sign determined by set or clear at count-up
+      OCR0A = 0;     //Sign determined by set or clear at count-up. High-side IGBT OFF.
+      OCR0B = 127;   //Sign determined by set or clear at count-up. Low-side IGBT 50% duty cycle to charge bootstrap cap.
       // Timer 2
       TCNT2 = 0;                  //Zero counter of timer 2
       TCCR2A = (1 << COM2A1) | (1 << COM2A0) | (1 << COM2B1) | (1 << WGM20); // Set OC0A and clear OC0B counting up. Waveform mode 1 (Table 14-8)
       TCCR2B = (1 << CS20);       //No prescaler
-      OCR2A = 255;   //Sign determined by set or clear at count-up
-      OCR2B = 127;   //Sign determined by set or clear at count-up
+      OCR2A = 255;   //Sign determined by set or clear at count-up. High-side IGBT OFF.
+      OCR2B = 127;   //Sign determined by set or clear at count-up. Low-side IGBT 50% duty cycle to charge bootstrap cap.
       sei();
    }
 }
@@ -326,7 +297,7 @@ void Pwm_Config()
 
 ISR (TIMER0_OVF_vect)
 {   
-   if (Init_PWM_Counter < 3 * ONE_MS) Init_PWM_Counter++;
+   if (Init_PWM_Counter < 10 * ONE_MS) Init_PWM_Counter++;           //Charge bootstrap cap as recommended by "Initial bootstrap capacitor charging" section in AN4840 by ST
    else
    {
       OVF_Counter++;   
@@ -336,22 +307,22 @@ ISR (TIMER0_OVF_vect)
          if (Sine_Index_120 == Sine_Len) Sine_Index_120 = 0;
          if (Sine_Index_240 == Sine_Len) Sine_Index_240 = 0;    
          //  
-         if ((Sine[Sine_Index] - DT) < 0) OCR0A = 0;
-         else  OCR0A = Sine[Sine_Index] - DT;  //Sign determined by set or clear at count-up
-         OCR0B = Sine[Sine_Index] + 2*DT;  //Sign determined by set or clear at count-up
+         if ((Amp * Sine[Sine_Index] - DT) < 0) OCR0A = 0;
+         else  OCR0A = Amp * Sine[Sine_Index] - DT;  //Sign determined by set or clear at count-up
+         OCR0B = Amp * Sine[Sine_Index] + 2*DT;  //Sign determined by set or clear at count-up
          //
          if (Phase_Config == ONE_PH)
          {
-            if ((Sine[Sine_Index] - DT) < 0) OCR2B = 0;
-            else  OCR2B = Sine[Sine_Index] - DT;   //Sign determined by set or clear at count-up
-            OCR2A = Sine[Sine_Index] + 2*DT;       //Sign determined by set or clear at count-up  
+            if ((Amp * Sine[Sine_Index] - DT) < 0) OCR2B = 0;
+            else  OCR2B = Amp * Sine[Sine_Index] - DT;   //Sign determined by set or clear at count-up
+            OCR2A = Amp * Sine[Sine_Index] + 2*DT;       //Sign determined by set or clear at count-up  
          }
          else if (Phase_Config == THREE_PH)
          {
-            OCR1A = Sine[Sine_Index_120] - DT;     //Sign determined by set or clear at count-up
-            OCR1B = Sine[Sine_Index_120] + 2*DT;   //Sign determined by set or clear at count-up
-            OCR2A = Sine[Sine_Index_240] - DT;     //Sign determined by set or clear at count-up
-            OCR2B = Sine[Sine_Index_240] + 2*DT;   //Sign determined by set or clear at count-up
+            OCR1A = Amp * Sine[Sine_Index_120] - DT;     //Sign determined by set or clear at count-up
+            OCR1B = Amp * Sine[Sine_Index_120] + 2*DT;   //Sign determined by set or clear at count-up
+            OCR2A = Amp * Sine[Sine_Index_240] - DT;     //Sign determined by set or clear at count-up
+            OCR2B = Amp * Sine[Sine_Index_240] + 2*DT;   //Sign determined by set or clear at count-up
          }
          OVF_Counter = 0;
          Sine_Index++;
