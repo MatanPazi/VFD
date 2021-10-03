@@ -3,7 +3,7 @@
    1 OVF scenario will occur every 256 * 2 = 512 samples.
    1/8MHz * 512 = 64[us]
    going over the 15 sample look-up table will take 64us * 15 = 0.96[ms] -> 1,041.66[Hz]
-   I'm aiming for 100[Hz] and below.
+   I'm aiming for ~100[Hz] and below.
    So to achieve a 100[Hz] sine wave, I will need to increment the sine table every
    1,041.66 / 100 = 10.41 OVF scenarios
    for 90[Hz] -> 1,041.66 / 90 = 11.57 OVF scenarios etc.
