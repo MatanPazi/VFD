@@ -95,8 +95,8 @@ volatile uint8_t Sine_Index_240 = (Sine_Len * 2) / 3;       //Sine_Len must be l
 // Generated using: https://www.daycounter.com/Calculators/Sine-Generator-Calculator.phtml
 const uint8_t Sine[] = {0x7f,0xb5,0xe1,0xfa,0xfa,0xe1,0xb5,0x7f,0x48,0x1c,0x3,0x3,0x1c,0x48,0x7f};
 
-TM1637Display Display1(CLK1, DIO1, LED_DELAY_MICRO);
-TM1637Display Display2(CLK2, DIO2, LED_DELAY_MICRO);
+TM1637Display Display1(CLK1, DIO1);
+TM1637Display Display2(CLK2, DIO2);
 
 void setup()
 {
@@ -110,6 +110,7 @@ void setup()
 }
 void loop()
 {   
+   //Calculate variables
    Curr_Value = (analogRead(CURR_INPUT) << 3);           //A value of 1023 (5V) -> 8000[mA], so 1023 << 3. Gives a resolution of 8[mA] allegedly.
    Desired_Freq = (analogRead(POT_INPUT) >> 3);          //A value of 1023 (5V) -> 128[Hz]. Divide result by 8 to get value in Hz
    if (Desired_Freq < Min_Freq) Desired_Freq = Min_Freq;
@@ -117,11 +118,12 @@ void loop()
    Amp = (float(Desired_Freq) * V_f) / VBus;
    if (Amp < Min_Amp) Amp = Min_Amp;      
    else if (Amp > Max_Amp) Amp = Max_Amp;
+   //Run functions
    Pot_Switch_State_Check();
-   Button_Click();
+   if (!PWM_Running) Button_Click();
    Display(PWM_Running, Config_Editable);
    Timer++;    
-   delay(10 * ONE_MS);     //No need to run so quickly
+   delay(10 * ONE_MS);        //No need to run so quickly, to give the displays some time.
 }
 
 
@@ -224,20 +226,23 @@ void Display(bool PWM_Running, bool Blink)
    }
    else
    {
-      while (Delay < HUNDRED_MS) Delay++;                //Delay for 100 [ms] prior to clearing display
       if (Blink) Display1.clear();
-      if (Phase_Config) Display1.setSegments(ONE_PHASE); //There is a delay (LED_DELAY_MICRO) prior to the display appearing
+      while (Delay < HUNDRED_MS) Delay++;                //Delay for 100 [ms] prior to setting display
+      if (Phase_Config) Display1.setSegments(ONE_PHASE);
       else Display1.setSegments(THREE_PHASE);     
    }
 }
 
 
-
+/* Pwm_Disable(): Disables the PWM and zeros some parameters
+   PWM_Running indicates the PWM is disabled
+   Init_PWM_Counter is used to charge the bootstrap capacitors everytime the PWM is enabled
+*/
 void Pwm_Disable()
 {
+   cli();
    PWM_Running = 0;
    Init_PWM_Counter = 0;
-   cli();
    TCCR0A = 0;
    TCCR0B = 0;
    TCCR1A = 0;
@@ -249,7 +254,7 @@ void Pwm_Disable()
 
 void Pwm_Config()
 {
-   //Need to make sure the pins are LOW prior to and after setting them to outputs so don't accidentally cause short in IPM. Check in scope
+   //***Check in scope. Need to make sure the pins are LOW prior to and after setting them to outputs so don't accidentally cause short in IPM.
    PWM_Running = 1;
    if (Phase_Config == THREE_PH)
    {
