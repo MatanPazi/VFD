@@ -16,13 +16,11 @@
    Since each sine index is repeated at least 10 times (10 OVF scenarios for max freq of 100 [Hz])
    I can simply turn all the transistors off for some of the OVF scenarios, depending on the desired attenuation.
    For now, after testing, seems like even at an amplitude of 10%, the sine wave form still remains. So will continue using division for now.
-   //
-   REMINDER: Charge low side mosfets for at least 10[ms] at 50% duty cycle prior to normal operation (App note AN4043, P. 34)***************************
-   //
    If operating a 3 phase motor, the 3 sine waves need to be 120 def apart
-   If operating a single phase motor, we have 2 options depending on the wiring:
-   1. With the capacitors removed, the phase shift between the main and auxiliary windings is achieved by connecting all three phases and the 3 sine waves can still be 120 degrees apart
-   2. With the capacitor/s installed, A single sine wave will be used connecting only 2 phases, so the outputs need to be inverted. 2 sine waves 180 degrees phase shifted (Simply invert PWM logic for relevant timer).
+   If operating a single phase motor, we have 2 options depending on the wiring: (Source: https://youtu.be/FyeJJ3Tp6iY?t=58)
+   1. With the capacitors removed, the phase shift between the main and auxiliary windings is achieved by connecting all three phases and the 3 sine waves can still be 120 degrees apart.
+      Won't be 90 deg phase shifted, but at 120 degrees, will still be reasonable.
+   2. With the capacitor/s installed, the outputs will be inverted. 2 sine waves 180 degrees phase shifted (Simply invert PWM logic for relevant timer).
    // Setting the LED display
    https://lastminuteengineers.com/tm1637-arduino-tutorial/
    //Atmega328 pin numbers:
@@ -77,17 +75,12 @@ uint32_t Pot_Switch_On_Timer = 0;
 uint8_t  Click_Type = 0;                  //1: Short, 2: Long
 bool  Phase_Config = 0;                   //0: 3 phase, 1: 1 phase
 bool  PWM_Running = 0;                    //Indicates if the PWM is operating or not
-bool  Config_Editable = 0;                //Is the configuration editable or not (Between 2 long clicks)
-float V_f = MIN_V_F;                      //Voltage to frequency value of the motor
+bool  Config_Editable = 0;                //Is the configuration editable or not (Between 2 long clicks). 0: No, 1: Yes
 float Amp = 1.0;                          //Voltage to frequency value of the motor
-//Sine wave index variables
-volatile uint8_t Sine_Index = 0;
-volatile uint8_t Sine_Index_120 = 5;
-volatile uint8_t Sine_Index_240 = 10;
-//
 volatile uint8_t Desired_Freq = 10;       //Desired freq [Hz]
 volatile uint32_t OVF_Counter = 0;        //Increments every overflow
 const unsigned uint8_t Min_Freq = 20
+const unsigned uint8_t Max_Freq = 100
 const unsigned uint8_t Milli_A_Resolution = 125
 const uint16_t Base_Freq = 1041             //Hz
 const float V_f = 3.8333                    //V/f value
@@ -96,7 +89,10 @@ const float Min_Amp = 0.1
 const float Max_Amp = 1.0
 const uint8_t DT = 1;                     //Dead time to prevent short-circuit betweem high & low mosfets
 const uint8_t Sine_Len = 15;              //Sine table length
-// Generated using https://www.daycounter.com/Calculators/Sine-Generator-Calculator.phtml
+volatile uint8_t Sine_Index = 0;
+volatile uint8_t Sine_Index_120 = Sine_Len / 3;
+volatile uint8_t Sine_Index_240 = (Sine_Len * 2) / 3;       //Sine_Len must be lower than 128, otherwise, change eq. 
+// Generated using: https://www.daycounter.com/Calculators/Sine-Generator-Calculator.phtml
 const uint8_t Sine[] = {0x7f,0xb5,0xe1,0xfa,0xfa,0xe1,0xb5,0x7f,0x48,0x1c,0x3,0x3,0x1c,0x48,0x7f};
 
 TM1637Display Display1(CLK1, DIO1, LED_DELAY_MICRO);
@@ -115,78 +111,27 @@ void setup()
 void loop()
 {   
    Curr_Value = (analogRead(CURR_INPUT) << 3);           //A value of 1023 (5V) -> 8000[mA], so 1023 << 3. Gives a resolution of 8[mA] allegedly.
-   Desired_Freq = (analogRead(POT_INPUT) >> 3);          //A value of 1023 (5V) -> 128[Hz]
+   Desired_Freq = (analogRead(POT_INPUT) >> 3);          //A value of 1023 (5V) -> 128[Hz]. Divide result by 8 to get value in Hz
    if (Desired_Freq < Min_Freq) Desired_Freq = Min_Freq;
+   else if (Desired_Freq > Max_Freq) Desired_Freq = Max_Freq;
    Amp = (float(Desired_Freq) * V_f) / VBus;
    if (Amp < Min_Amp) Amp = Min_Amp;      
    else if (Amp > Max_Amp) Amp = Max_Amp;
    Pot_Switch_State_Check();
    Button_Click();
-
-   //function: If PIND2==LOW for more than half second, on a rising edge of PINB4 (low and high states are long enough) due the following:
-   //If the low state was longer than 1 sec, turn to config state
-   //Otherwise, cycle between possible configurations
+   Display(PWM_Running, Config_Editable);
    Timer++;    
+   delay(10 * ONE_MS);     //No need to run so quickly
 }
 
 
-void Display(bool PWM_Running, uint8_t Display_Num, bool Blink, uint16_t Delay)
-{
-   if (PWM_Running)
-   {
-      if (Display_Num == 1)
-      {
-         if (Desired_Freq > 999) Display1.showNumberDec(Desired_Freq, false, 4, 0);
-         else if (Desired_Freq > 99) Display1.showNumberDec(Desired_Freq, false, 3, 0);
-         else Display1.showNumberDec(Desired_Freq, false, 2, 0);         
-      }
-      else if (Display_Num == 2)
-      {
-         if (Curr_Value > 999) Display2.showNumberDec(Curr_Value, false, 4, 0);
-         else Display2.showNumberDec(Curr_Value, false, 3, 0);         
-      }   
-   }
-   else
-   {
-      while (Delay != 0) Delay--;
-      if (Blink) Display1.clear();
-      if (Phase_Config) Display1.setSegments(ONE_PHASE);
-      else Display1.setSegments(THREE_PHASE);     
-   }
-}
 
-void Button_Click()
-{
-   if (!PINB4)
-   {
-      if (Timer - Timer_Temp1  > 1) Click_Timer = 0;    //To make sure these increments are consecutive
-      else Click_Timer++;
-      Timer_Temp1 = Timer;
-   }
-   else
-   {
-      if (Click_Timer > 10 * ONE_MS && Click_Timer < HALF_SECOND) Click_Type = 1;
-      else if (Click_Timer > 2 * HALF_SECOND) Click_Type = 2;         
-      Click_Timer = 0;
-   }   
-   if (Click_Type == 2)
-   {
-      Config_Editable = !Config_Editable;    //Toggle
-      Click_Type = 0;
-   }
-   else if (Click_Type == 1)
-   {
-      if (Config_Editable)
-      {
-         Phase_Config = !Phase_Config;
-      }
-      Click_Type = 0;
-   }
-   Display(PWM_Running, 1, Config_Editable, HUNDRED_MS);
-}
-
-
-void Pot_Switch_State_Check()
+/* Pot_Switch_State_Check(): Detects the state of the potentiometer switch
+   If it is ON a sufficiently long time (Avoid false triggers) PWM starts running with defined configuration
+   Otherwise, if it is OFF a sufficiently long time (Avoid false triggers) PWM is disabled and the configuration
+   is displayed (1PH/3PH) and allowed to be altered using the button.
+*/
+void Pot_Switch_State_Check()    
 {
    if (PIND2)     //Potentiometer switch ON
    {      
@@ -221,6 +166,71 @@ void Pot_Switch_State_Check()
       Pot_Switch_Off_Timer = 0;
    }  
 }
+
+
+
+/* Button_Click(): Detects a button click. Determines if it was a short click (switch between configuration if multiple are available)
+   Or alter configuration.
+   Or a long click, which enables and disables the ability to alter the configuration.
+*/
+void Button_Click()
+{
+   if (!PINB4)
+   {
+      if (Timer - Timer_Temp1  > 1) Click_Timer = 0;    //To make sure these increments are consecutive
+      else Click_Timer++;
+      Timer_Temp1 = Timer;
+   }
+   else
+   {
+      if (Click_Timer > 10 * ONE_MS && Click_Timer < HALF_SECOND) Click_Type = 1;
+      else if (Click_Timer > 2 * HALF_SECOND) Click_Type = 2;         
+      Click_Timer = 0;
+   }   
+   if (Click_Type == 2)
+   {
+      Config_Editable = !Config_Editable;    //Toggle
+      Click_Type = 0;
+   }
+   else if (Click_Type == 1)
+   {
+      if (Config_Editable)
+      {
+         Phase_Config = !Phase_Config;
+      }
+      Click_Type = 0;
+   }
+}
+
+
+/* Display(): Chooses what and how to display on the 2 available LED displays.
+   2 inputs:
+      1. PWM_Running, whether or not the PWM is active or not.
+      2. Blink, whether to cause the display to blink or not. signifies if the configuration is editable or not.
+         Blinking: Editable, Not blinking: Not editable
+*/
+void Display(bool PWM_Running, bool Blink)
+{
+   uint32_t Delay = 0;
+   if (PWM_Running)
+   {
+      //Display 1, displays desired frequency in [Hz]
+      if (Desired_Freq > 999) Display1.showNumberDec(Desired_Freq, false, 4, 0);
+      else if (Desired_Freq > 99) Display1.showNumberDec(Desired_Freq, false, 3, 0);
+      else Display1.showNumberDec(Desired_Freq, false, 2, 0);         
+      //Display 2, displays measured current in [mA]
+      if (Curr_Value > 999) Display2.showNumberDec(Curr_Value, false, 4, 0);
+      else Display2.showNumberDec(Curr_Value, false, 3, 0);         
+   }
+   else
+   {
+      while (Delay < HUNDRED_MS) Delay++;                //Delay for 100 [ms] prior to clearing display
+      if (Blink) Display1.clear();
+      if (Phase_Config) Display1.setSegments(ONE_PHASE); //There is a delay (LED_DELAY_MICRO) prior to the display appearing
+      else Display1.setSegments(THREE_PHASE);     
+   }
+}
+
 
 
 void Pwm_Disable()
