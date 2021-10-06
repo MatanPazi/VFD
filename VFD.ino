@@ -128,7 +128,7 @@ void loop()
    //Run functions
    Pot_Switch_State_Check();
    if (!PWM_Running) Button_Click();
-   Display(PWM_Running, Config_Editable);
+   if (PWM_Running != PWM_NOT_SET) Display(PWM_Running, Config_Editable);
    Timer++;    
    delay(10 * ONE_MS);        //No need to run so quickly, to give the displays some time.
 }
