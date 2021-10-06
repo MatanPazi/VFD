@@ -35,21 +35,25 @@
 #include <TM1637Display.h>
 
 // Module connection pins (Digital Pins)
-#define CLK1 3
+#define CLK1 12
 #define DIO1 2
-#define CLK2 13
-#define DIO2 6
+#define CLK2 7
+#define DIO2 4
 #define CURR_INPUT A0
 #define POT_INPUT A2
 //
-#define LED_DELAY_MICRO 65000
 #define THREE_PH 0
 #define ONE_PH 1
+#define PWM_RUNNING 2
+#define PWM_NOT_RUNNING 1
+#define PWM_NOT_SET 0
 //millis() etc. disabled(?) due to use of timers in PWM.
 //Approx. time of loop ~
-#define ONE_MS   16
-#define HUNDRED_MS   160
-#define HALF_SECOND   8000
+#define NUM_OF_SAMPLES  5
+#define ONE_MS_OVF      16
+#define SHORT_WAIT      5000
+#define MEDIUM_WAIT     200000
+#define LONG_WAIT       1000000
 
 const uint8_t ONE_PHASE[] = {
     SEG_B | SEG_C,                                    // 1
@@ -63,6 +67,9 @@ const uint8_t THREE_PHASE[] = {
     SEG_B | SEG_C | SEG_E | SEG_F | SEG_G,            // H
     0,                                                // space
     };
+const uint8_t SPACE[] = {
+    0,                                                // space
+    }; 
 
 uint16_t Curr_Value = 0;
 uint32_t Timer = 0;
@@ -73,22 +80,22 @@ uint32_t Click_Timer = 0;
 uint32_t Pot_Switch_Off_Timer = 0;
 uint32_t Pot_Switch_On_Timer = 0;
 uint8_t  Click_Type = 0;                  //1: Short, 2: Long
+uint8_t  PWM_Running = PWM_NOT_SET;       //Indicates if the PWM is operating or not. 2 is running, 1 is not, initialized to 0 to indicate not yet set.
 bool  Phase_Config = 0;                   //0: 3 phase, 1: 1 phase
-bool  PWM_Running = 0;                    //Indicates if the PWM is operating or not
 bool  Config_Editable = 0;                //Is the configuration editable or not (Between 2 long clicks). 0: No, 1: Yes
-float Amp = 1.0;                          //Voltage to frequency value of the motor
-volatile uint8_t Desired_Freq = 10;       //Desired freq [Hz]
-volatile uint32_t OVF_Counter = 0;        //Increments every overflow
-const uint8_t Min_Freq = 20;
-const uint8_t Max_Freq = 100;
-const uint8_t Milli_A_Resolution = 125;
-const uint16_t Base_Freq = 1041;             //Hz
-const float V_f = 3.8333;                    //V/f value
-const float VBus = 230.0;                    //[VAC]
 const float Min_Amp = 0.1;
 const float Max_Amp = 1.0;
-const uint8_t DT = 1;                        //Dead time to prevent short-circuit betweem high & low mosfets
-const uint8_t Sine_Len = 15;                 //Sine table length
+const uint8_t Min_Freq = 20;
+const uint8_t Max_Freq = 100;
+volatile uint8_t Desired_Freq = Min_Freq; //Desired freq [Hz]
+float Amp = 1.0;                          //Voltage to frequency value of the motor
+volatile uint32_t OVF_Counter = 0;        //Increments every overflow
+const uint8_t Milli_A_Resolution = 125;
+const uint16_t Base_Freq = 1041;          //Hz
+const float V_f = 3.8333;                 //V/f value
+const float VBus = 230.0;                 //[VAC]
+const uint8_t DT = 1;                     //Dead time to prevent short-circuit betweem high & low mosfets
+const uint8_t Sine_Len = 15;              //Sine table length
 volatile uint8_t Sine_Index = 0;
 volatile uint8_t Sine_Index_120 = Sine_Len / 3;
 volatile uint8_t Sine_Index_240 = (Sine_Len * 2) / 3;       //Sine_Len must be lower than 128, otherwise, change eq. 
@@ -104,8 +111,7 @@ void setup()
    Display2.setBrightness(0x02);
    Display1.clear();
    Display2.clear();
-   PORTD = (1 << PORTD2);     //Activates internal pull up for PD2. Default pin state is input. Potentiometer switch
-   PORTB = (1 << PORTB4);     //Activates internal pull up for PB4. Default pin state is input. Tactile switch
+   PORTC = (1 << PORTC3) | (1 << PORTC4);     //Activates internal pull up for PC3 (ADC3) and PC4 (ADC4). Default pin state is input. Potentiometer switch and button respectively   
    DDRB = (1 << DDB0);       //Sets PB0 pin to output (Default is LOW). Commands the relay
 }
 void loop()
@@ -113,6 +119,7 @@ void loop()
    //Calculate variables
    Curr_Value = (analogRead(CURR_INPUT) << 3);           //A value of 1023 (5V) -> 8000[mA], so 1023 << 3. Gives a resolution of 8[mA] allegedly.
    Desired_Freq = (analogRead(POT_INPUT) >> 3);          //A value of 1023 (5V) -> 128[Hz]. Divide result by 8 to get value in Hz
+   Wait_A_Bit(SHORT_WAIT);
    if (Desired_Freq < Min_Freq) Desired_Freq = Min_Freq;
    else if (Desired_Freq > Max_Freq) Desired_Freq = Max_Freq;
    Amp = (float(Desired_Freq) * V_f) / VBus;
@@ -135,37 +142,41 @@ void loop()
 */
 void Pot_Switch_State_Check()    
 {
-   if (PIND2)     //Potentiometer switch ON
+   if (!((PINC >> PINC3) & 1))     //Potentiometer switch ON (when ON, PINC3 is pulled LOW).
    {      
-      if (!PWM_Running)    //If PWM isn't running
+      if (PWM_Running != PWM_RUNNING)    //If PWM isn't running
       {
-         if (Timer - Timer_Temp  > 1) Pot_Switch_On_Timer = 0;    //To make sure these increments are consecutive
-         else  Pot_Switch_On_Timer++;      
-         Timer_Temp = Timer;
-         Pot_Switch_Off_Timer = 0;
+        if (Timer - Timer_Temp  > 1) Pot_Switch_On_Timer = 0;    //To make sure these increments are consecutive
+        else  Pot_Switch_On_Timer++;      
+        Timer_Temp = Timer;
+        Pot_Switch_Off_Timer = 0;
       }
    }
    else           //Potentiometer switch OFF
    {
-      if (PWM_Running)     //If PWM is running
+      if (PWM_Running != PWM_NOT_RUNNING)     //If PWM is running
       {
-         if (Timer - Timer_Temp  > 1) Pot_Switch_Off_Timer = 0;      //To make sure these increments are consecutive
-         else  Pot_Switch_Off_Timer++;      
-         Timer_Temp = Timer;
-         Pot_Switch_On_Timer = 0;
+        if (Timer - Timer_Temp  > 1) Pot_Switch_Off_Timer = 0;      //To make sure these increments are consecutive
+        else  Pot_Switch_Off_Timer++;      
+        Timer_Temp = Timer;
+        Pot_Switch_On_Timer = 0;
       }
    }   
-   if (Pot_Switch_On_Timer > HUNDRED_MS)
+   if (Pot_Switch_On_Timer > NUM_OF_SAMPLES)
    {
       Pwm_Config();      
       Pot_Switch_On_Timer = 0;
-      Pot_Switch_Off_Timer = 0;
+      Pot_Switch_Off_Timer = 0;      
+      Display1.clear();
+      Display2.clear();
    }   
-   if (Pot_Switch_Off_Timer > HUNDRED_MS)
+   if (Pot_Switch_Off_Timer > NUM_OF_SAMPLES)
    {
       Pwm_Disable();
       Pot_Switch_On_Timer = 0;
       Pot_Switch_Off_Timer = 0;
+      Display1.clear();
+      Display2.clear();
    }  
 }
 
@@ -177,7 +188,7 @@ void Pot_Switch_State_Check()
 */
 void Button_Click()
 {
-   if (!PINB4)
+   if (!((PINC >> PINC4) & 1))     //Button being pushed (when button is pushed, PINC4 is pulled LOW).
    {
       if (Timer - Timer_Temp1  > 1) Click_Timer = 0;    //To make sure these increments are consecutive
       else Click_Timer++;
@@ -185,8 +196,8 @@ void Button_Click()
    }
    else
    {
-      if (Click_Timer > 10 * ONE_MS && Click_Timer < HALF_SECOND) Click_Type = 1;
-      else if (Click_Timer > 2 * HALF_SECOND) Click_Type = 2;         
+      if (Click_Timer > 10 * ONE_MS_OVF && Click_Timer < LONG_WAIT) Click_Type = 1;
+      else if (Click_Timer > 2 * LONG_WAIT) Click_Type = 2;         
       Click_Timer = 0;
    }   
    if (Click_Type == 2)
@@ -213,24 +224,49 @@ void Button_Click()
 */
 void Display(bool PWM_Running, bool Blink)
 {
-   uint32_t Delay = 0;
-   if (PWM_Running)
-   {
-      //Display 1, displays desired frequency in [Hz]
-      if (Desired_Freq > 999) Display1.showNumberDec(Desired_Freq, false, 4, 0);
-      else if (Desired_Freq > 99) Display1.showNumberDec(Desired_Freq, false, 3, 0);
-      else Display1.showNumberDec(Desired_Freq, false, 2, 0);         
-      //Display 2, displays measured current in [mA]
-      if (Curr_Value > 999) Display2.showNumberDec(Curr_Value, false, 4, 0);
-      else Display2.showNumberDec(Curr_Value, false, 3, 0);         
-   }
-   else
-   {
-      if (Blink) Display1.clear();
-      while (Delay < HUNDRED_MS) Delay++;                //Delay for 100 [ms] prior to setting display
-      if (Phase_Config) Display1.setSegments(ONE_PHASE);
-      else Display1.setSegments(THREE_PHASE);     
-   }
+  uint32_t Delay = 0;
+  if (PWM_Running == PWM_RUNNING)
+  {
+    //Display 1, displays desired frequency in [Hz]
+    if (Desired_Freq > 99) Display1.showNumberDec(Desired_Freq, false, 3, 1);
+    else 
+    {
+      Display1.setSegments(SPACE, 1, 1);
+      Display1.showNumberDec(Desired_Freq, false, 2, 2);         
+    }
+    //Display 2, displays measured current in [mA]
+    if (Curr_Value > 999) Display2.showNumberDec(Curr_Value, false, 4, 0);
+    else 
+    {
+      Display2.setSegments(SPACE, 1, 0);
+      Display2.showNumberDec(Curr_Value, false, 3, 0);         
+    }
+  }
+  else
+  {
+    if (Blink)
+    {
+      Display1.clear();
+      Display2.clear();
+    }
+    Wait_A_Bit(MEDIUM_WAIT);
+    if (Phase_Config) Display1.setSegments(ONE_PHASE);
+    else Display1.setSegments(THREE_PHASE);     
+  }
+}
+
+
+
+/* Wait_A_Bit(): Delays for a specified amount of executions
+*/
+void Wait_A_Bit(uint32_t Executions_To_Wait)
+{
+  volatile uint32_t Timer_Temp2 = 0;
+  while (Timer_Temp2 < Executions_To_Wait)
+  {
+    Timer_Temp2 = Timer_Temp2 + 2;
+  }
+  Timer_Temp2 = 0;
 }
 
 
@@ -241,7 +277,7 @@ void Display(bool PWM_Running, bool Blink)
 void Pwm_Disable()
 {
    cli();
-   PWM_Running = 0;
+   PWM_Running = PWM_NOT_RUNNING;
    Init_PWM_Counter = 0;
    TCCR0A = 0;
    TCCR0B = 0;
@@ -255,7 +291,7 @@ void Pwm_Disable()
 void Pwm_Config()
 {
    //***Check in scope. Need to make sure the pins are LOW prior to and after setting them to outputs so don't accidentally cause short in IPM.
-   PWM_Running = 1;
+   PWM_Running = PWM_RUNNING;
    if (Phase_Config == THREE_PH)
    {
       DDRD = (1 << DDD6) | (1 << DDD5) | (1 << DDD3); //Sets the OC0A, OC0B and OC2B pins to outputs
