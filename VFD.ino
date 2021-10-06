@@ -348,7 +348,7 @@ void Pwm_Config()
 
 ISR (TIMER0_OVF_vect)
 {   
-   if (Init_PWM_Counter < 10 * ONE_MS) Init_PWM_Counter++;           //Charge bootstrap cap as recommended by "Initial bootstrap capacitor charging" section in AN4840 by ST
+   if (Init_PWM_Counter < 10 * ONE_MS_OVF) Init_PWM_Counter++;           //Charge bootstrap cap as recommended by "Initial bootstrap capacitor charging" section in AN4840 by ST
    else
    {
       OVF_Counter++;   
