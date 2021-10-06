@@ -222,7 +222,7 @@ void Button_Click()
       2. Blink, whether to cause the display to blink or not. signifies if the configuration is editable or not.
          Blinking: Editable, Not blinking: Not editable
 */
-void Display(bool PWM_Running, bool Blink)
+void Display(uint8_t PWM_Running, bool Blink)
 {
   uint32_t Delay = 0;
   if (PWM_Running == PWM_RUNNING)
