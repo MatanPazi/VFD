@@ -47,13 +47,13 @@
 #define PWM_RUNNING 2
 #define PWM_NOT_RUNNING 1
 #define PWM_NOT_SET 0
-//millis() etc. disabled(?) due to use of timers in PWM.
+//millis(), delay() don't work as expected due to use of timers in PWM.
 //Approx. time of loop ~
-#define NUM_OF_SAMPLES  5
-#define ONE_MS_OVF      16
-#define SHORT_WAIT      5000
-#define MEDIUM_WAIT     200000
-#define LONG_WAIT       1000000
+#define SHORT_CLICK     3
+#define LONG_CLICK      25
+#define POT_SWITCH_SAMPLES  5
+#define TEN_MS_OVF      16
+#define SHORT_WAIT      500
 
 const uint8_t ONE_PHASE[] = {
     SEG_B | SEG_C,                                    // 1
@@ -71,54 +71,60 @@ const uint8_t SPACE[] = {
     0,                                                // space
     }; 
 
-uint16_t Curr_Value = 0;
-uint32_t Timer = 0;
-uint32_t Timer_Temp = 0;
-uint32_t Timer_Temp1 = 0;
-uint32_t Init_PWM_Counter = 0;
-uint32_t Click_Timer = 0;
-uint32_t Pot_Switch_Off_Timer = 0;
-uint32_t Pot_Switch_On_Timer = 0;
-uint8_t  Click_Type = 0;                  //1: Short, 2: Long
-uint8_t  PWM_Running = PWM_NOT_SET;       //Indicates if the PWM is operating or not. 2 is running, 1 is not, initialized to 0 to indicate not yet set.
-bool  Phase_Config = 0;                   //0: 3 phase, 1: 1 phase
-bool  Config_Editable = 0;                //Is the configuration editable or not (Between 2 long clicks). 0: No, 1: Yes
-const float Min_Amp = 0.1;
-const float Max_Amp = 1.0;
-const uint8_t Min_Freq = 20;
-const uint8_t Max_Freq = 100;
-volatile uint8_t Desired_Freq = Min_Freq; //Desired freq [Hz]
-float Amp = Min_Amp;                          //Voltage to frequency value of the motor
-volatile uint32_t OVF_Counter = 0;        //Increments every overflow
-const uint8_t Milli_A_Resolution = 125;
-const uint16_t Base_Freq = 1041;          //Hz
-const float V_f = 3.8333;                 //V/f value
-const float VBus = 230.0;                 //[VAC]
-const uint8_t DT = 1;                     //Dead time to prevent short-circuit betweem high & low mosfets
-const uint8_t Sine_Len = 15;              //Sine table length
-volatile uint8_t Sine_Index = 0;
-volatile uint8_t Sine_Index_120 = Sine_Len / 3;
-volatile uint8_t Sine_Index_240 = (Sine_Len * 2) / 3;       //Sine_Len must be lower than 128, otherwise, change eq. 
 // Generated using: https://www.daycounter.com/Calculators/Sine-Generator-Calculator.phtml
 const uint8_t Sine[] = {0x7f,0xb5,0xe1,0xfa,0xfa,0xe1,0xb5,0x7f,0x48,0x1c,0x3,0x3,0x1c,0x48,0x7f};
+const uint8_t Sine_Len = 15;              //Sine table length
+const uint8_t Min_Freq = 20;              //Minimal demanded sine wave frequency
+const uint8_t Max_Freq = 100;             //Maximal demanded sine wave frequency
+const uint8_t DT = 1;                     //Dead time to prevent short-circuit betweem high & low mosfets
+const uint16_t Base_Freq = 1041;          //[Hz] Maximal frequency if the sine wave array index is incremented every OVF occurance 
+const float Min_Amp = 0.1;                //Minimal allowed sine wave amplitude
+const float Max_Amp = 1.0;                //Maximal allowed sine wave amplitude
+const float V_f = 3.8333;                 //V/f value. ~230[VAC] w/ 60[Hz]
+const float VBus = 230.0;                 //AC voltage [VAC]
+bool  Phase_Config = 0;                   //0: 3 phase, 1: 1 phase
+bool  Config_Editable = 0;                //Is the configuration editable or not (Between 2 long clicks). 0: No, 1: Yes
+uint8_t  Click_Type = 0;                  //1: Short, 2: Long
+uint8_t  PWM_Running = PWM_NOT_SET;       //Indicates if the PWM is operating or not. 2 is running, 1 is not, initialized to 0 to indicate not yet set.
+uint16_t Curr_Value = 0;                  //Current value measured in [mA]
+uint32_t Timer = 0;                       //Timer, increments every loop
+uint32_t Click_Timer = 0;                 //Increments while button is clicked
+uint32_t Pot_Switch_Off_Timer = 0;        //Increments while potentiometer switch is OFF
+uint32_t Pot_Switch_On_Timer = 0;         //Increments while potentiometer switch is ON
+uint32_t Display_Timer = 0;               //Used for delay of the blinking display (When configurable)
+uint32_t Timer_Temp = 0;                  //Used to make sure of consecutive executions
+uint32_t Timer_Temp1 = 0;                 //Used to make sure of consecutive executions
+uint32_t Init_PWM_Counter = 0;            //Used for charging the bootstrap capacitors, source below
+float Amp = Min_Amp;                      //Sine wave amplitude
+volatile uint8_t Desired_Freq = Min_Freq; //Desired sine wave freq [Hz]
+volatile uint8_t Sine_Index = 0;          //3 sine wave indices are used to allow for phase shifted sine waves.
+volatile uint8_t Sine_Index_120 = Sine_Len / 3;
+volatile uint8_t Sine_Index_240 = (Sine_Len * 2) / 3;       //Sine_Len must be lower than 128, otherwise, change eq. 
+volatile uint32_t OVF_Counter = 0;        //Increments every Timer0 overflow
 
 TM1637Display Display1(CLK1, DIO1);
 TM1637Display Display2(CLK2, DIO2);
 
 void setup()
 {
-   Display1.setBrightness(0x02);
-   Display2.setBrightness(0x02);
-   Display1.clear();
-   Display2.clear();
-   PORTC = (1 << PORTC3) | (1 << PORTC4);     //Activates internal pull up for PC3 (ADC3) and PC4 (ADC4). Default pin state is input. Potentiometer switch and button respectively   
-   DDRB = (1 << DDB0);       //Sets PB0 pin to output (Default is LOW). Commands the relay
+  cli();                                      //Disable interrupts
+  CLKPR = (1 << CLKPCE);                      //Enable change of the clock prescaler
+  CLKPR = (1 << CLKPS0);                      //Set system clock prescaler to 2. Beforehand DT had to be increased to a large value due to IPM, and at low amplitudes distorted sine wave. When reducing the prescaler, this allows for the DT value to be small.
+  sei();
+  Serial.begin(19200);                        //Set the baud rate to double that which is set in "Serial Monitor" due to the prescaler being 2 instead of 1.
+  Display1.setBrightness(0x02);
+  Display2.setBrightness(0x02);
+  Display1.clear();
+  Display2.clear();
+  PORTC = (1 << PORTC3) | (1 << PORTC4);      //Activates internal pull up for PC3 (ADC3) and PC4 (ADC4). Default pin state is input. Potentiometer switch and button respectively   
+  DDRB = (1 << DDB0);                         //Sets PB0 pin to output (Default is LOW). Commands the relay
 }
 void loop()
 {   
+   Wait_A_Bit(SHORT_WAIT);                                   //Using this function since delay() doesn't seem to work correctly when ISR is activated.
    //Calculate variables
-   Curr_Value = (analogRead(CURR_INPUT) << 3);           //A value of 1023 (5V) -> 8000[mA], so 1023 << 3. Gives a resolution of 8[mA] allegedly.
-   Desired_Freq = (analogRead(POT_INPUT) >> 3);          //A value of 1023 (5V) -> 128[Hz]. Divide result by 8 to get value in Hz
+   Curr_Value = ((analogRead(CURR_INPUT) >> 4) << 7);        //A value of 1023 (5V) -> 8000[mA]. First divide by 16 then multiply by 128. Gives resolution of 128[mA]
+   Desired_Freq = (analogRead(POT_INPUT) >> 3);              //A value of 1023 (5V) -> 128[Hz]. Divide result by 8 to get value in Hz. Gives resolution of 1[Hz]
    Wait_A_Bit(SHORT_WAIT);
    if (Desired_Freq < Min_Freq) Desired_Freq = Min_Freq;
    else if (Desired_Freq > Max_Freq) Desired_Freq = Max_Freq;
@@ -127,10 +133,9 @@ void loop()
    else if (Amp > Max_Amp) Amp = Max_Amp;
    //Run functions
    Pot_Switch_State_Check();
-   if (!PWM_Running) Button_Click();
+   if (PWM_Running != PWM_RUNNING) Button_Click();
    if (PWM_Running != PWM_NOT_SET) Display(PWM_Running, Config_Editable);
    Timer++;    
-   delay(10 * ONE_MS);        //No need to run so quickly, to give the displays some time.
 }
 
 
@@ -162,7 +167,7 @@ void Pot_Switch_State_Check()
         Pot_Switch_On_Timer = 0;
       }
    }   
-   if (Pot_Switch_On_Timer > NUM_OF_SAMPLES)
+   if (Pot_Switch_On_Timer > POT_SWITCH_SAMPLES)
    {
       Pwm_Config();      
       Pot_Switch_On_Timer = 0;
@@ -170,7 +175,7 @@ void Pot_Switch_State_Check()
       Display1.clear();
       Display2.clear();
    }   
-   if (Pot_Switch_Off_Timer > NUM_OF_SAMPLES)
+   if (Pot_Switch_Off_Timer > POT_SWITCH_SAMPLES)
    {
       Pwm_Disable();
       Pot_Switch_On_Timer = 0;
@@ -188,31 +193,26 @@ void Pot_Switch_State_Check()
 */
 void Button_Click()
 {
-   if (!((PINC >> PINC4) & 1))     //Button being pushed (when button is pushed, PINC4 is pulled LOW).
-   {
-      if (Timer - Timer_Temp1  > 1) Click_Timer = 0;    //To make sure these increments are consecutive
-      else Click_Timer++;
-      Timer_Temp1 = Timer;
-   }
-   else
-   {
-      if (Click_Timer > 10 * ONE_MS_OVF && Click_Timer < LONG_WAIT) Click_Type = 1;
-      else if (Click_Timer > 2 * LONG_WAIT) Click_Type = 2;         
-      Click_Timer = 0;
-   }   
-   if (Click_Type == 2)
-   {
+  if (!((PINC >> PINC4) & 1))     //Button being pushed (when button is pushed, PINC4 is pulled LOW).
+  {
+    if (Timer - Timer_Temp1  > 1) Click_Timer = 0;    //To make sure these increments are consecutive
+    else Click_Timer++;
+    Timer_Temp1 = Timer;
+    if (Click_Timer == LONG_CLICK)
+    {
       Config_Editable = !Config_Editable;    //Toggle
-      Click_Type = 0;
-   }
-   else if (Click_Type == 1)
-   {
-      if (Config_Editable)
-      {
-         Phase_Config = !Phase_Config;
-      }
-      Click_Type = 0;
-   }
+      PWM_Running = PWM_NOT_RUNNING;        //TEMP**********    
+    }
+  } 
+  else if (Click_Timer > SHORT_CLICK && Click_Timer < LONG_CLICK)
+  {
+    if (Config_Editable)
+    {
+       Phase_Config = !Phase_Config;
+    }
+    Click_Timer = 0;
+  }
+  else Click_Timer = 0;
 }
 
 
@@ -224,7 +224,6 @@ void Button_Click()
 */
 void Display(uint8_t PWM_Running, bool Blink)
 {
-  uint32_t Delay = 0;
   if (PWM_Running == PWM_RUNNING)
   {
     //Display 1, displays desired frequency in [Hz]
@@ -239,19 +238,23 @@ void Display(uint8_t PWM_Running, bool Blink)
     else 
     {
       Display2.setSegments(SPACE, 1, 0);
-      Display2.showNumberDec(Curr_Value, false, 3, 0);         
+      Display2.showNumberDec(Curr_Value, false, 3, 1);         
     }
   }
   else
   {
-    if (Blink)
+    Display_Timer++;
+    if (Blink && (Display_Timer == 25))
     {
       Display1.clear();
       Display2.clear();
     }
-    Wait_A_Bit(MEDIUM_WAIT);
-    if (Phase_Config) Display1.setSegments(ONE_PHASE);
-    else Display1.setSegments(THREE_PHASE);     
+    else if (Display_Timer > 50)
+    {
+      if (Phase_Config) Display1.setSegments(ONE_PHASE);
+      else Display1.setSegments(THREE_PHASE); 
+      Display_Timer = 0;   
+    }
   }
 }
 
@@ -264,10 +267,12 @@ void Wait_A_Bit(uint32_t Executions_To_Wait)
   volatile uint32_t Timer_Temp2 = 0;
   while (Timer_Temp2 < Executions_To_Wait)
   {
-    Timer_Temp2 = Timer_Temp2 + 2;
+    Timer_Temp2 = Timer_Temp2 + 1;
   }
   Timer_Temp2 = 0;
 }
+
+
 
 
 /* Pwm_Disable(): Disables the PWM and zeros some parameters
@@ -276,8 +281,8 @@ void Wait_A_Bit(uint32_t Executions_To_Wait)
 */
 void Pwm_Disable()
 {
-   cli();
    PWM_Running = PWM_NOT_RUNNING;
+   cli();
    Init_PWM_Counter = 0;
    TCCR0A = 0;
    TCCR0B = 0;
@@ -285,7 +290,7 @@ void Pwm_Disable()
    TCCR1B = 0;
    TCCR2A = 0;
    TCCR2B = 0;
-   sei();         
+   sei();    
 }
 
 void Pwm_Config()
@@ -297,8 +302,6 @@ void Pwm_Config()
       DDRD = (1 << DDD6) | (1 << DDD5) | (1 << DDD3); //Sets the OC0A, OC0B and OC2B pins to outputs
       DDRB = (1 << DDB3) | (1 << DDB2) | (1 << DDB1); //Sets the OC2A, OC1B and OC1A pins to outputs
       cli();                      //Disable interrupts
-      CLKPR = (1 << CLKPCE);      //Enable change of the clock prescaler
-      CLKPR = (1 << CLKPS0);      //Set system clock prescaler to 2
       //Timer 0
       TCNT0 = 0;                  //Zero counter of timer 0
       TCCR0A = (1 << COM0A1) | (1 << COM0B1) | (1 << COM0B0) | (1 << WGM00); // Clear OC0A and set OC0B counting up. Waveform mode 1 (Table 14-8)
@@ -318,15 +321,13 @@ void Pwm_Config()
       TCCR2B = (1 << CS20);       //No prescaler
       OCR2A = 0;     //Sign determined by set or clear at count-up. High-side IGBT OFF.
       OCR2B = 127;   //Sign determined by set or clear at count-up. Low-side IGBT 50% duty cycle to charge bootstrap cap.
-      sei();
+      sei();      
    }
    else if (Phase_Config == ONE_PH)
    {
       DDRD = (1 << DDD6) | (1 << DDD5) | (1 << DDD3); //Sets the OC0A, OC0B and OC2B pins to outputs
       DDRB = (1 << DDB3);                             //Sets the OC2A pin to output
       cli();                      //Disable interrupts
-      CLKPR = (1 << CLKPCE);      //Enable change of the clock prescaler
-      CLKPR = (1 << CLKPS0);      //Set system clock prescaler to 2
       //Timer 0
       TCNT0 = 0;                  //Zero counter of timer 0
       TCCR0A = (1 << COM0A1) | (1 << COM0B1) | (1 << COM0B0) | (1 << WGM00); // Clear OC0A and set OC0B counting up. Waveform mode 1 (Table 14-8)
@@ -348,7 +349,7 @@ void Pwm_Config()
 
 ISR (TIMER0_OVF_vect)
 {   
-   if (Init_PWM_Counter < 10 * ONE_MS_OVF) Init_PWM_Counter++;           //Charge bootstrap cap as recommended by "Initial bootstrap capacitor charging" section in AN4840 by ST
+   if (Init_PWM_Counter < TEN_MS_OVF) Init_PWM_Counter++;           //Charge bootstrap cap as recommended by "Initial bootstrap capacitor charging" section in AN4840 by ST
    else
    {
       OVF_Counter++;   
