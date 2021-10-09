@@ -51,9 +51,10 @@
 //Approx. time of loop ~
 #define SHORT_CLICK     3
 #define LONG_CLICK      25
-#define POT_SWITCH_SAMPLES  5
+#define POT_SWITCH_SAMPLES  2
 #define TEN_MS_OVF      16
 #define SHORT_WAIT      500
+#define DISPLAY_BLINK   25
 
 const uint8_t ONE_PHASE[] = {
     SEG_B | SEG_C,                                    // 1
@@ -111,7 +112,7 @@ void setup()
   CLKPR = (1 << CLKPCE);                      //Enable change of the clock prescaler
   CLKPR = (1 << CLKPS0);                      //Set system clock prescaler to 2. Beforehand DT had to be increased to a large value due to IPM, and at low amplitudes distorted sine wave. When reducing the prescaler, this allows for the DT value to be small.
   sei();
-  Serial.begin(19200);                        //Set the baud rate to double that which is set in "Serial Monitor" due to the prescaler being 2 instead of 1.
+  //Serial.begin(19200);                        //Set the baud rate to double that which is set in "Serial Monitor" due to the prescaler being 2 instead of 1.
   Display1.setBrightness(0x02);
   Display2.setBrightness(0x02);
   Display1.clear();
@@ -121,14 +122,13 @@ void setup()
 }
 void loop()
 {   
-   Wait_A_Bit(SHORT_WAIT);                                   //Using this function since delay() doesn't seem to work correctly when ISR is activated.
    //Calculate variables
    Curr_Value = ((analogRead(CURR_INPUT) >> 4) << 7);        //A value of 1023 (5V) -> 8000[mA]. First divide by 16 then multiply by 128. Gives resolution of 128[mA]
    Desired_Freq = (analogRead(POT_INPUT) >> 3);              //A value of 1023 (5V) -> 128[Hz]. Divide result by 8 to get value in Hz. Gives resolution of 1[Hz]
-   Wait_A_Bit(SHORT_WAIT);
+   if (PWM_Running != PWM_RUNNING) Wait_A_Bit(SHORT_WAIT);   //Using this function since delay() doesn't seem to work correctly when ISR is activated. Not needed to delay if interrupts are enabled.
    if (Desired_Freq < Min_Freq) Desired_Freq = Min_Freq;
    else if (Desired_Freq > Max_Freq) Desired_Freq = Max_Freq;
-   Amp = (float(Desired_Freq) * V_f) / VBus;
+   Amp = (float(Desired_Freq) * V_f) / VBus;                 //Calculating the sine wave amplitude based on the desired frequency and the V/f value.
    if (Amp < Min_Amp) Amp = Min_Amp;      
    else if (Amp > Max_Amp) Amp = Max_Amp;
    //Run functions
@@ -141,7 +141,7 @@ void loop()
 
 
 /* Pot_Switch_State_Check(): Detects the state of the potentiometer switch
-   If it is ON a sufficiently long time (Avoid false triggers) PWM starts running with defined configuration
+   If it is ON a sufficiently long time (Avoid false triggers) PWM starts running with defined configuration and displays the measured current and the desired frequency.
    Otherwise, if it is OFF a sufficiently long time (Avoid false triggers) PWM is disabled and the configuration
    is displayed (1PH/3PH) and allowed to be altered using the button.
 */
@@ -149,47 +149,46 @@ void Pot_Switch_State_Check()
 {
    if (!((PINC >> PINC3) & 1))     //Potentiometer switch ON (when ON, PINC3 is pulled LOW).
    {      
-      if (PWM_Running != PWM_RUNNING)    //If PWM isn't running
+      if (PWM_Running != PWM_RUNNING)    //If PWM isn't running (If it was already running, no need to update anything).
       {
         if (Timer - Timer_Temp  > 1) Pot_Switch_On_Timer = 0;    //To make sure these increments are consecutive
         else  Pot_Switch_On_Timer++;      
         Timer_Temp = Timer;
         Pot_Switch_Off_Timer = 0;
+        if (Pot_Switch_On_Timer > POT_SWITCH_SAMPLES)      //If potentiometer switch was ON a sufficient amount of time
+        {
+          Pwm_Config();      
+          Pot_Switch_On_Timer = 0;
+          Pot_Switch_Off_Timer = 0;      
+          Display1.clear();
+          Display2.clear();
+        }         
       }
    }
    else           //Potentiometer switch OFF
    {
-      if (PWM_Running != PWM_NOT_RUNNING)     //If PWM is running
+      if (PWM_Running != PWM_NOT_RUNNING)     //If PWM is running (If it was already not running, no need to update anything).
       {
         if (Timer - Timer_Temp  > 1) Pot_Switch_Off_Timer = 0;      //To make sure these increments are consecutive
         else  Pot_Switch_Off_Timer++;      
         Timer_Temp = Timer;
         Pot_Switch_On_Timer = 0;
+        if (Pot_Switch_Off_Timer > POT_SWITCH_SAMPLES)     //If potentiometer switch was OFF a sufficient amount of time
+        {
+          Pwm_Disable();
+          Pot_Switch_On_Timer = 0;
+          Pot_Switch_Off_Timer = 0;
+          Display1.clear();
+          Display2.clear();
+        } 
       }
-   }   
-   if (Pot_Switch_On_Timer > POT_SWITCH_SAMPLES)
-   {
-      Pwm_Config();      
-      Pot_Switch_On_Timer = 0;
-      Pot_Switch_Off_Timer = 0;      
-      Display1.clear();
-      Display2.clear();
-   }   
-   if (Pot_Switch_Off_Timer > POT_SWITCH_SAMPLES)
-   {
-      Pwm_Disable();
-      Pot_Switch_On_Timer = 0;
-      Pot_Switch_Off_Timer = 0;
-      Display1.clear();
-      Display2.clear();
-   }  
+   }    
 }
 
 
-
-/* Button_Click(): Detects a button click. Determines if it was a short click (switch between configuration if multiple are available)
-   Or alter configuration.
-   Or a long click, which enables and disables the ability to alter the configuration.
+/* Button_Click(): Detects a button click. Determines if it was a short click:
+   switch between configuration if multiple are available or alter the configuration.
+   Or a long click: Enables and disables the ability to alter the configuration.
 */
 void Button_Click()
 {
@@ -201,14 +200,13 @@ void Button_Click()
     if (Click_Timer == LONG_CLICK)
     {
       Config_Editable = !Config_Editable;    //Toggle
-      PWM_Running = PWM_NOT_RUNNING;        //TEMP**********    
     }
   } 
   else if (Click_Timer > SHORT_CLICK && Click_Timer < LONG_CLICK)
   {
     if (Config_Editable)
     {
-       Phase_Config = !Phase_Config;
+       Phase_Config = !Phase_Config;        //Toggle
     }
     Click_Timer = 0;
   }
@@ -244,12 +242,12 @@ void Display(uint8_t PWM_Running, bool Blink)
   else
   {
     Display_Timer++;
-    if (Blink && (Display_Timer == 25))
+    if (Blink && (Display_Timer == DISPLAY_BLINK))
     {
       Display1.clear();
       Display2.clear();
     }
-    else if (Display_Timer > 50)
+    else if (Display_Timer > (2*DISPLAY_BLINK))
     {
       if (Phase_Config) Display1.setSegments(ONE_PHASE);
       else Display1.setSegments(THREE_PHASE); 
@@ -360,14 +358,14 @@ ISR (TIMER0_OVF_vect)
          if (Sine_Index_240 == Sine_Len) Sine_Index_240 = 0;    
          //  
          if ((Amp * Sine[Sine_Index] - DT) < 0) OCR0A = 0;
-         else  OCR0A = Amp * Sine[Sine_Index] - DT;  //Sign determined by set or clear at count-up
-         OCR0B = Amp * Sine[Sine_Index] + 2*DT;  //Sign determined by set or clear at count-up
+         else  OCR0A = Amp * Sine[Sine_Index] - DT;       //Sign determined by set or clear at count-up
+         OCR0B = Amp * Sine[Sine_Index] + 2*DT;           //Sign determined by set or clear at count-up
          //
          if (Phase_Config == ONE_PH)
          {
             if ((Amp * Sine[Sine_Index] - DT) < 0) OCR2B = 0;
-            else  OCR2B = Amp * Sine[Sine_Index] - DT;   //Sign determined by set or clear at count-up
-            OCR2A = Amp * Sine[Sine_Index] + 2*DT;       //Sign determined by set or clear at count-up  
+            else  OCR2B = Amp * Sine[Sine_Index] - DT;    //Sign determined by set or clear at count-up
+            OCR2A = Amp * Sine[Sine_Index] + 2*DT;        //Sign determined by set or clear at count-up  
          }
          else if (Phase_Config == THREE_PH)
          {
