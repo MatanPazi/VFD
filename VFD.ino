@@ -25,6 +25,10 @@
    https://lastminuteengineers.com/tm1637-arduino-tutorial/
    //Atmega328 pin numbers:
    http://www.learningaboutelectronics.com/Articles/Atmega328-pinout.php
+   //
+   //To-do *****************************************************************************
+   Save last phase configuration to EEPROM. ********************************************
+   *************************************************************************************
 */
 #define _DISABLE_ARDUINO_TIMER0_INTERRUPT_HANDLER_  //These 2 lines were added to be able to compile. Also changed wiring.c file. Disables the previous overflow handles used for millis(), micros(), delay() etc.
 #include <wiring.c>                                 //Reference: https://stackoverflow.com/questions/46573550/atmel-arduino-isrtimer0-ovf-vect-wont-compile-first-defined-in-vector/48779546
@@ -300,25 +304,30 @@ void Pwm_Config()
       DDRD = (1 << DDD6) | (1 << DDD5) | (1 << DDD3); //Sets the OC0A, OC0B and OC2B pins to outputs
       DDRB = (1 << DDB3) | (1 << DDB2) | (1 << DDB1); //Sets the OC2A, OC1B and OC1A pins to outputs
       cli();                      //Disable interrupts
+      //Synchronising all 3 timers 1st segment. Source: http://www.openmusiclabs.com/learning/digital/synchronizing-timers/index.html
+      GTCCR = (1<<TSM)|(1<<PSRASY)|(1<<PSRSYNC); //Halt all timers
       //Timer 0
-      TCNT0 = 0;                  //Zero counter of timer 0
       TCCR0A = (1 << COM0A1) | (1 << COM0B1) | (1 << COM0B0) | (1 << WGM00); // Clear OC0A and set OC0B counting up. Waveform mode 1 (Table 14-8)
       TCCR0B = (1 << CS00);       //No prescaler
       TIMSK0 = (1 << TOIE0);      //Timer/Counter0 Overflow Interrupt Enable
       OCR0A = 0;     //Sign determined by set or clear at count-up. High-side IGBT OFF.
       OCR0B = 127;   //Sign determined by set or clear at count-up. Low-side IGBT 50% duty cycle to charge bootstrap cap.
       // Timer 1
-      TCNT1 = 0;                  //Zero counter of timer 1
       TCCR1A = (1 << COM1A1) | (1 << COM1B1) | (1 << COM1B0) | (1 << WGM10); // Clear OC1A and set OC1B counting up. Waveform mode 1 (Table 14-8)
       TCCR1B = (1 << CS10);       //No prescaler
       OCR1A = 0;     //Sign determined by set or clear at count-up. High-side IGBT OFF.
       OCR1B = 127;   //Sign determined by set or clear at count-up. Low-side IGBT 50% duty cycle to charge bootstrap cap.
       // Timer 2
-      TCNT2 = 0;                  //Zero counter of timer 2
       TCCR2A = (1 << COM2A1) | (1 << COM2B1) | (1 << COM2B0) | (1 << WGM20); // Clear OC0A and set OC0B counting up. Waveform mode 1 (Table 14-8)
       TCCR2B = (1 << CS20);       //No prescaler
       OCR2A = 0;     //Sign determined by set or clear at count-up. High-side IGBT OFF.
       OCR2B = 127;   //Sign determined by set or clear at count-up. Low-side IGBT 50% duty cycle to charge bootstrap cap.
+      //Synchronising all 3 timers 2nd segment. Source: http://www.openmusiclabs.com/learning/digital/synchronizing-timers/index.html
+      TCNT0 = 0;     //Set timer0 to 0
+      TCNT1H = 0;    //Set timer1 high byte to 0
+      TCNT1L = 0;    //Set timer1 low byte to 0
+      TCNT2 = 0;     //Set timer2 to 0      
+      GTCCR = 0;     //Release all timers
       sei();      
    }
    else if (Phase_Config == ONE_PH)
@@ -326,19 +335,25 @@ void Pwm_Config()
       DDRD = (1 << DDD6) | (1 << DDD5) | (1 << DDD3); //Sets the OC0A, OC0B and OC2B pins to outputs
       DDRB = (1 << DDB3);                             //Sets the OC2A pin to output
       cli();                      //Disable interrupts
+      //Synchronising all 3 timers 1st segment. Source: http://www.openmusiclabs.com/learning/digital/synchronizing-timers/index.html
+      GTCCR = (1<<TSM)|(1<<PSRASY)|(1<<PSRSYNC); //Halt all timers
       //Timer 0
-      TCNT0 = 0;                  //Zero counter of timer 0
       TCCR0A = (1 << COM0A1) | (1 << COM0B1) | (1 << COM0B0) | (1 << WGM00); // Clear OC0A and set OC0B counting up. Waveform mode 1 (Table 14-8)
       TCCR0B = (1 << CS00);       //No prescaler
       TIMSK0 = (1 << TOIE0);      //Timer/Counter0 Overflow Interrupt Enable
       OCR0A = 0;     //Sign determined by set or clear at count-up. High-side IGBT OFF.
       OCR0B = 127;   //Sign determined by set or clear at count-up. Low-side IGBT 50% duty cycle to charge bootstrap cap.
       // Timer 2
-      TCNT2 = 0;                  //Zero counter of timer 2
-      TCCR2A = (1 << COM2A1) | (1 << COM2A0) | (1 << COM2B1) | (1 << WGM20); // Set OC0A and clear OC0B counting up. Waveform mode 1 (Table 14-8)
+      TCCR2A = (1 << COM2A1) | (1 << COM2A0) | (1 << COM2B1) | (1 << WGM20); // Set OC2A and clear OC2B counting up. Waveform mode 1 (Table 14-8)
       TCCR2B = (1 << CS20);       //No prescaler
       OCR2A = 255;   //Sign determined by set or clear at count-up. High-side IGBT OFF.
       OCR2B = 127;   //Sign determined by set or clear at count-up. Low-side IGBT 50% duty cycle to charge bootstrap cap.
+      //Synchronising all 3 timers 2nd segment. Source: http://www.openmusiclabs.com/learning/digital/synchronizing-timers/index.html
+      TCNT0 = 0;     //Set timer0 to 0
+      TCNT1H = 0;    //Set timer1 high byte to 0
+      TCNT1L = 0;    //Set timer1 low byte to 0
+      TCNT2 = 0;     //Set timer2 to 0      
+      GTCCR = 0;     //Release all timers
       sei();
    }
 }
