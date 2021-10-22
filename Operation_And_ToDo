@@ -1,8 +1,8 @@
 To-do:
 1. Save phase configuration to EEPROM
 
-Operation:
 
+Operation:
 Internal operation (And notes to self):
 1. Turning on the main power switch.
 2. Wait in this state for ~3 seconds untill the rectifier capacitors are adequately charged.
