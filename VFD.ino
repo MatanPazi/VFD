@@ -56,7 +56,7 @@
 #define SHORT_CLICK     3
 #define LONG_CLICK      25
 #define POT_SWITCH_SAMPLES  2
-#define TEN_MS_OVF      16
+#define TEN_MS_OVF      160
 #define SHORT_WAIT      500
 #define DISPLAY_BLINK   25
 
