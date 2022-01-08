@@ -89,6 +89,7 @@ const float V_f = 3.8333;                 //V/f value. ~230[VAC] w/ 60[Hz]
 const float VBus = 230.0;                 //AC voltage [VAC]
 bool  Phase_Config = 0;                   //0: 3 phase, 1: 1 phase
 bool  Config_Editable = 0;                //Is the configuration editable or not (Between 2 long clicks). 0: No, 1: Yes
+int8_t  Saved_Phase_Config = -1;          //Last chosen phase configuration, saved to EEPROM. Initialized to -1
 uint8_t  Click_Type = 0;                  //1: Short, 2: Long
 uint8_t  PWM_Running = PWM_NOT_SET;       //Indicates if the PWM is operating or not. 2 is running, 1 is not, initialized to 0 to indicate not yet set.
 uint16_t Curr_Value = 0;                  //Current value measured in [mA]
@@ -112,6 +113,11 @@ TM1637Display Display2(CLK2, DIO2);
 
 void setup()
 {
+  //Load the latest chosen phase configuration, unless this is the first time.
+  if (EEPROM.read(256) == 123)
+  {
+     EEPROM.get(0, Phase_Config)              //Set Phase_Config to first byte in EEPROM.
+  }
   cli();                                      //Disable interrupts
   CLKPR = (1 << CLKPCE);                      //Enable change of the clock prescaler
   CLKPR = (1 << CLKPS0);                      //Set system clock prescaler to 2. Beforehand DT had to be increased to a large value due to IPM, and at low amplitudes distorted sine wave. When reducing the prescaler, this allows for the DT value to be small.
@@ -211,6 +217,8 @@ void Button_Click()
     if (Config_Editable)
     {
        Phase_Config = !Phase_Config;        //Toggle
+       EEPROM.write(0,  Phase_Config)       //Save latest value to EEPROM 
+       EEPROM.write(256, 123)               //Update that the Phase_Config was saved to EEPROM (Write a value of 123 to byte 256, arbitrary numbers)
     }
     Click_Timer = 0;
   }
