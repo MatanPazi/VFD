@@ -89,7 +89,6 @@ const float V_f = 3.8333;                 //V/f value. ~230[VAC] w/ 60[Hz]
 const float VBus = 230.0;                 //AC voltage [VAC]
 bool  Phase_Config = 0;                   //0: 3 phase, 1: 1 phase
 bool  Config_Editable = 0;                //Is the configuration editable or not (Between 2 long clicks). 0: No, 1: Yes
-int8_t  Saved_Phase_Config = -1;          //Last chosen phase configuration, saved to EEPROM. Initialized to -1
 uint8_t  Click_Type = 0;                  //1: Short, 2: Long
 uint8_t  PWM_Running = PWM_NOT_SET;       //Indicates if the PWM is operating or not. 2 is running, 1 is not, initialized to 0 to indicate not yet set.
 uint16_t Curr_Value = 0;                  //Current value measured in [mA]
