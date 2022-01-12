@@ -123,6 +123,7 @@ void setup()
   Display2.clear();
   PORTC = (1 << PORTC3) | (1 << PORTC4);      //Activates internal pull up for PC3 (ADC3) and PC4 (ADC4). Default pin state is input. Potentiometer switch and button respectively   
   DDRB = (1 << DDB0);                         //Sets PB0 pin to output (Default is LOW). Commands the relay
+  Pwm_Config();
 }
 void loop()
 {   
@@ -143,7 +144,7 @@ void loop()
    Timer++;    
    */
    Amp = (float(Desired_Freq) * V_f) / VBus;                 //Calculating the sine wave amplitude based on the desired frequency and the V/f value.
-   if (PWM_Running != PWM_RUNNING) Pwm_Config();
+   //if (PWM_Running != PWM_RUNNING) Pwm_Config();
 }
 
 
