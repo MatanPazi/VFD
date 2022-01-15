@@ -25,6 +25,9 @@
    https://lastminuteengineers.com/tm1637-arduino-tutorial/
    //Atmega328 pin numbers:
    http://www.learningaboutelectronics.com/Articles/Atmega328-pinout.php
+   Dead-time:
+   Datasheet recommends 1 [us] for each input signal. However, when looking at the datasheet, the turn-on time is 290[ns] and turn off time is 515[ns], so I need a minimum of
+   515-290 = 225[ns] between PWM signals. Each count takes 125[ns], so I'll take 125*4 = 500[ns] dead time.
    //
    //To-do *****************************************************************************
    Save last phase configuration to EEPROM. ********************************************
@@ -379,21 +382,21 @@ ISR (TIMER0_OVF_vect)
          if (Sine_Index_120 == Sine_Len) Sine_Index_120 = 0;
          if (Sine_Index_240 == Sine_Len) Sine_Index_240 = 0;    
          //  
-         if ((Amp * Sine[Sine_Index] - DT) < 0) OCR0A = 0;
-         else  OCR0A = Amp * Sine[Sine_Index] - DT;       //Sign determined by set or clear at count-up
+         if ((Amp * Sine[Sine_Index] - 2*DT) < 0) OCR0A = 0;
+         else  OCR0A = Amp * Sine[Sine_Index] - 2*DT;       //Sign determined by set or clear at count-up
          OCR0B = Amp * Sine[Sine_Index] + 2*DT;           //Sign determined by set or clear at count-up
          //
          if (Phase_Config == ONE_PH)
          {
-            if ((Amp * Sine[Sine_Index] - DT) < 0) OCR2B = 0;
-            else  OCR2B = Amp * Sine[Sine_Index] - DT;    //Sign determined by set or clear at count-up
+            if ((Amp * Sine[Sine_Index] - 2*DT) < 0) OCR2B = 0;
+            else  OCR2B = Amp * Sine[Sine_Index] - 2*DT;    //Sign determined by set or clear at count-up
             OCR2A = Amp * Sine[Sine_Index] + 2*DT;        //Sign determined by set or clear at count-up  
          }
          else if (Phase_Config == THREE_PH)
          {
-            OCR1A = Amp * Sine[Sine_Index_120] - DT;     //Sign determined by set or clear at count-up
+            OCR1A = Amp * Sine[Sine_Index_120] - 2*DT;     //Sign determined by set or clear at count-up
             OCR1B = Amp * Sine[Sine_Index_120] + 2*DT;   //Sign determined by set or clear at count-up
-            OCR2A = Amp * Sine[Sine_Index_240] - DT;     //Sign determined by set or clear at count-up
+            OCR2A = Amp * Sine[Sine_Index_240] - 2*DT;     //Sign determined by set or clear at count-up
             OCR2B = Amp * Sine[Sine_Index_240] + 2*DT;   //Sign determined by set or clear at count-up
          }
          OVF_Counter = 0;
