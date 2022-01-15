@@ -115,7 +115,7 @@ void setup()
   //Load the latest chosen phase configuration, unless this is the first time.
   if (EEPROM.read(256) == 123)
   {
-     EEPROM.get(0, Phase_Config)              //Set Phase_Config to first byte in EEPROM.
+     EEPROM.get(0, Phase_Config);             //Set Phase_Config to first byte in EEPROM.
   }
   cli();                                      //Disable interrupts
   CLKPR = (1 << CLKPCE);                      //Enable change of the clock prescaler
@@ -216,8 +216,8 @@ void Button_Click()
     if (Config_Editable)
     {
        Phase_Config = !Phase_Config;        //Toggle
-       EEPROM.write(0,  Phase_Config)       //Save latest value to EEPROM 
-       EEPROM.write(256, 123)               //Update that the Phase_Config was saved to EEPROM (Write a value of 123 to byte 256, arbitrary numbers)
+       EEPROM.write(0,  Phase_Config);      //Save latest value to EEPROM 
+       EEPROM.write(256, 123);              //Update that the Phase_Config was saved to EEPROM (Write a value of 123 to byte 256, arbitrary numbers)
     }
     Click_Timer = 0;
   }
