@@ -1,1 +1,24 @@
+Video walkthrough (Upload using programmer!!):
+https://youtu.be/aDcdOgW0OU0
 
+General guides:
+https://www.circuito.io/blog/atmega328p-bootloader/
+
+http://eng-shady-mohsen.blogspot.com/2018/03/programming-atmel-atmega328-pu.html
+
+
+
+
+If using an Arduino Mega as the programmer, remember to change the SPI pin numbers
+
+
+Uncomment this (Or use the SPI header).
+  // #define USE_OLD_STYLE_WIRING
+
+  #ifdef USE_OLD_STYLE_WIRING
+
+    #define PIN_MOSI	11  (This is 51)
+    #define PIN_MISO	12  (This is 50)
+    #define PIN_SCK		13  (This is 52)
+
+  #endif
