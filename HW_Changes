@@ -1,0 +1,2 @@
+1. Switch between 5V power supply outputs (5V and GND)
+2. Change pull up resistor for Atmega reset pin from 3.3[KOhm] to 10[KOhm]
