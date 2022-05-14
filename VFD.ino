@@ -59,8 +59,8 @@
 #define SHORT_CLICK     3
 #define LONG_CLICK      25
 #define POT_SWITCH_SAMPLES  2
-#define TEN_MS_OVF      160      // 160 OVF events (64[us]) results in 10[ms], which is the initial delay we need.
-#define SHORT_WAIT      500
+#define TEN_MS_OVF      160         // 160 OVF events (64[us]) results in 10[ms], which is the initial delay we need.
+#define RELAY_CHARGE_WAIT      500  // 
 #define DISPLAY_BLINK   25
 
 const uint8_t ONE_PHASE[] = {
@@ -131,7 +131,7 @@ void setup()
   Display2.clear();
   PORTC = (1 << PORTC3) | (1 << PORTC4);      //Activates internal pull up for PC3 (ADC3) and PC4 (ADC4). Default pin state is input. Potentiometer switch and button respectively   
   DDRB = (1 << DDB0);                         //Sets PB0 pin to output (Default is LOW). Commands the relay
-  Wait_A_Bit(SHORT_WAIT);                     //Using this function since delay() doesn't seem to work correctly when ISR is activated. Not needed to delay if interrupts are enabled.
+  Wait_A_Bit(RELAY_CHARGE_WAIT);              //Using this function since delay() doesn't seem to work correctly when ISR is activated. Not needed to delay if interrupts are enabled.
                                               //Waiting this delay to let the capacitors charge up. ~3 seconds.
   PORTB = (1 << PORTB0);                      //Set output pin to the relay high, to bypass the high power resistor after the caps were sufficiently charged
 }
