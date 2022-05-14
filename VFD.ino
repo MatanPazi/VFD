@@ -281,9 +281,8 @@ void Wait_A_Bit(uint32_t Executions_To_Wait)
   volatile uint32_t Timer_Temp2 = 0;
   while (Timer_Temp2 < Executions_To_Wait)
   {
-    Timer_Temp2 = Timer_Temp2 + 1;
+    Timer_Temp2++;
   }
-  Timer_Temp2 = 0;
 }
 
 
