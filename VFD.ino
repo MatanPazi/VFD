@@ -133,6 +133,7 @@ void setup()
   DDRB = (1 << DDB0);                         //Sets PB0 pin to output (Default is LOW). Commands the relay
   Wait_A_Bit(SHORT_WAIT);                     //Using this function since delay() doesn't seem to work correctly when ISR is activated. Not needed to delay if interrupts are enabled.
                                               //Waiting this delay to let the capacitors charge up. ~3 seconds.
+  PORTB = (1 << PORTB0);                      //Set output pin to the relay high, to bypass the high power resistor after the caps were sufficiently charged
 }
 void loop()
 {   
