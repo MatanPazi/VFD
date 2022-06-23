@@ -30,7 +30,7 @@
    515-290 = 225[ns] between PWM signals. Each count takes 125[ns], so I'll take 125*4 = 500[ns] dead time.
    //
    //To-do *****************************************************************************
-   Save last phase configuration to EEPROM. ********************************************
+   
    *************************************************************************************
 */
 #define _DISABLE_ARDUINO_TIMER0_INTERRUPT_HANDLER_  //These 2 lines were added to be able to compile. Also changed wiring.c file. Disables the previous overflow handles used for millis(), micros(), delay() etc.
