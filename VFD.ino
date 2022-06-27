@@ -27,7 +27,7 @@
    http://www.learningaboutelectronics.com/Articles/Atmega328-pinout.php
    Dead-time:
    Datasheet recommends 1 [us] for each input signal. However, when looking at the datasheet, the turn-on time is 290[ns] and turn off time is 515[ns], so I need a minimum of
-   515-290 = 225[ns] between PWM signals. Each count takes 125[ns], so I'll take 125*4 = 500[ns] dead time.
+   515-290 = 225[ns] between PWM signals. Each clock takes 125[ns] (8[MHz]), so I'll take 125*4 = 500[ns] dead time.
    //
    //To-do *****************************************************************************
    
