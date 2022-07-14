@@ -384,21 +384,23 @@ ISR (TIMER0_OVF_vect)
          if (Sine_Index_240 == Sine_Len) Sine_Index_240 = 0;    
          //  
          if ((Amp * Sine[Sine_Index] - 2*DT) < 0) OCR0A = 0;
-         else  OCR0A = Amp * Sine[Sine_Index] - 2*DT;       //Sign determined by set or clear at count-up
-         OCR0B = Amp * Sine[Sine_Index] + 2*DT;           //Sign determined by set or clear at count-up
+         else  OCR0A = Amp * Sine[Sine_Index] - 2*DT;
+         OCR0B = Amp * Sine[Sine_Index] + 2*DT;                // if/else not needed for +DT because Amp <= 1.0
          //
          if (Phase_Config == ONE_PH)
          {
             if ((Amp * Sine[Sine_Index] - 2*DT) < 0) OCR2B = 0;
-            else  OCR2B = Amp * Sine[Sine_Index] - 2*DT;    //Sign determined by set or clear at count-up
-            OCR2A = Amp * Sine[Sine_Index] + 2*DT;        //Sign determined by set or clear at count-up  
+            else  OCR2B = Amp * Sine[Sine_Index] - 2*DT;
+            OCR2A = Amp * Sine[Sine_Index] + 2*DT;  
          }
          else if (Phase_Config == THREE_PH)
          {
-            OCR1A = Amp * Sine[Sine_Index_120] - 2*DT;     //Sign determined by set or clear at count-up
-            OCR1B = Amp * Sine[Sine_Index_120] + 2*DT;   //Sign determined by set or clear at count-up
-            OCR2A = Amp * Sine[Sine_Index_240] - 2*DT;     //Sign determined by set or clear at count-up
-            OCR2B = Amp * Sine[Sine_Index_240] + 2*DT;   //Sign determined by set or clear at count-up
+            if ((Amp * Sine[Sine_Index_120] - 2*DT) < 0) OCR1A = 0;
+            else OCR1A = Amp * Sine[Sine_Index_120] - 2*DT;
+            OCR1B = Amp * Sine[Sine_Index_120] + 2*DT;   
+            if ((Amp * Sine[Sine_Index_240] - 2*DT) < 0) OCR2A = 0;
+            else OCR2A = Amp * Sine[Sine_Index_240] - 2*DT;
+            OCR2B = Amp * Sine[Sine_Index_240] + 2*DT;   
          }
          OVF_Counter = 0;
          Sine_Index++;
