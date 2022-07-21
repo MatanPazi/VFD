@@ -80,11 +80,11 @@ const uint8_t SPACE[] = {
     }; 
 
 // Generated using: https://www.daycounter.com/Calculators/Sine-Generator-Calculator.phtml
-const uint8_t Sine[] = {0x7f,0xb5,0xe1,0xfa,0xfa,0xe1,0xb5,0x7f,0x48,0x1c,0x3,0x3,0x1c,0x48,0x7f};
+const int8_t Sine[] = {0x7f,0xb5,0xe1,0xfa,0xfa,0xe1,0xb5,0x7f,0x48,0x1c,0x3,0x3,0x1c,0x48,0x7f};
 const uint8_t Sine_Len = 15;              //Sine table length
 const uint8_t Min_Freq = 20;              //Minimal demanded sine wave frequency
 const uint8_t Max_Freq = 100;             //Maximal demanded sine wave frequency
-const uint8_t DT = 1;                     //Dead time to prevent short-circuit betweem high & low mosfets
+const int8_t DT = 1;                     //Dead time to prevent short-circuit betweem high & low mosfets
 const uint16_t Base_Freq = 1041;          //[Hz] Maximal frequency if the sine wave array index is incremented every OVF occurance 
 const float Min_Amp = 0.1;                //Minimal allowed sine wave amplitude
 const float Max_Amp = 1.0;                //Maximal allowed sine wave amplitude
@@ -383,7 +383,7 @@ ISR (TIMER0_OVF_vect)
          if (Sine_Index_120 == Sine_Len) Sine_Index_120 = 0;
          if (Sine_Index_240 == Sine_Len) Sine_Index_240 = 0;    
          //  
-         if ((Amp * Sine[Sine_Index] - 2*DT) < 0)
+         if ((Amp * (float)Sine[Sine_Index] - 2*DT) < 0)
          {
             OCR0A = 0;
             OCR0B = 4*DT;
@@ -401,7 +401,7 @@ ISR (TIMER0_OVF_vect)
          }
          else if (Phase_Config == THREE_PH)
          {
-            if ((Amp * Sine[Sine_Index_120] - 2*DT) < 0)
+            if ((Amp * (float)Sine[Sine_Index_120] - 2*DT) < 0)
             {
                OCR1A = 0;
                OCR1B = 4*DT;
@@ -412,7 +412,7 @@ ISR (TIMER0_OVF_vect)
                OCR1B = Amp * Sine[Sine_Index_120] + 2*DT;   
             }
             
-            if ((Amp * Sine[Sine_Index_240] - 2*DT) < 0)
+            if ((Amp * (float)Sine[Sine_Index_240] - 2*DT) < 0)
             {
                OCR2A = 0;
                OCR2B = 4*DT;
