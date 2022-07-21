@@ -84,7 +84,7 @@ const int8_t Sine[] = {0x7f,0xb5,0xe1,0xfa,0xfa,0xe1,0xb5,0x7f,0x48,0x1c,0x3,0x3
 const uint8_t Sine_Len = 15;              //Sine table length
 const uint8_t Min_Freq = 20;              //Minimal demanded sine wave frequency
 const uint8_t Max_Freq = 100;             //Maximal demanded sine wave frequency
-float DT = 1;                     //Dead time to prevent short-circuit betweem high & low mosfets
+float DT = 1.0;                           //Dead time to prevent short-circuit betweem high & low mosfets
 const uint16_t Base_Freq = 1041;          //[Hz] Maximal frequency if the sine wave array index is incremented every OVF occurance 
 const float Min_Amp = 0.1;                //Minimal allowed sine wave amplitude
 const float Max_Amp = 1.0;                //Maximal allowed sine wave amplitude
@@ -386,12 +386,12 @@ ISR (TIMER0_OVF_vect)
          if ((Amp * (float)Sine[Sine_Index] - 2*DT) < 0)
          {
             OCR0A = 0;
-            OCR0B = 4*DT;
+            OCR0B = uint8_t(4*DT);
          }
          else
          {
-            OCR0A = Amp * (float)Sine[Sine_Index] - 2*DT;
-            OCR0B = Amp * (float)Sine[Sine_Index] + 2*DT;
+            OCR0A = uint8_t(Amp * (float)Sine[Sine_Index] - 2*DT);
+            OCR0B = uint8_t(Amp * (float)Sine[Sine_Index] + 2*DT);
          }
          
          if (Phase_Config == ONE_PH)
@@ -404,23 +404,23 @@ ISR (TIMER0_OVF_vect)
             if ((Amp * (float)Sine[Sine_Index_120] - 2*DT) < 0)
             {
                OCR1A = 0;
-               OCR1B = 4*DT;
+               OCR1B = uint8_t(4*DT);
             }
             else
             {
-               OCR1A = Amp * (float)Sine[Sine_Index_120] - 2*DT;
-               OCR1B = Amp * (float)Sine[Sine_Index_120] + 2*DT;   
+               OCR1A = uint8_t(Amp * (float)Sine[Sine_Index_120] - 2*DT);
+               OCR1B = uint8_t(Amp * (float)Sine[Sine_Index_120] + 2*DT);
             }
             
             if ((Amp * (float)Sine[Sine_Index_240] - 2*DT) < 0)
             {
                OCR2A = 0;
-               OCR2B = 4*DT;
+               OCR2B = uint8_t(4*DT);
             }            
             else
             {
-               OCR2A = Amp * (float)Sine[Sine_Index_240] - 2*DT;
-               OCR2B = Amp * (float)Sine[Sine_Index_240] + 2*DT; 
+               OCR2A = uint8_t(Amp * (float)Sine[Sine_Index_240] - 2*DT);
+               OCR2B = uint8_t(Amp * (float)Sine[Sine_Index_240] + 2*DT); 
             }
          }
          OVF_Counter = 0;
