@@ -396,9 +396,8 @@ ISR (TIMER0_OVF_vect)
          
          if (Phase_Config == ONE_PH)
          {
-            if ((Amp * Sine[Sine_Index] - 2*DT) < 0) OCR2B = 0;
-            else  OCR2B = Amp * Sine[Sine_Index] - 2*DT;
-            OCR2A = Amp * Sine[Sine_Index] + 2*DT;  
+            OCR2A = 255 - OCR0B;                      //Needs to be the complementary of OCR0.
+            OCR2B = 255 - OCR0A;           
          }
          else if (Phase_Config == THREE_PH)
          {
