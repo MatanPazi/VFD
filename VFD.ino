@@ -298,11 +298,11 @@ void Pwm_Disable()
    cli();
    Init_PWM_Counter = 0;
    TCCR0A = 0;
-   TCCR0B = 0;
+   TCCR0B = 255;
    TCCR1A = 0;
-   TCCR1B = 0;
+   TCCR1B = 255;
    TCCR2A = 0;
-   TCCR2B = 0;
+   TCCR2B = 255;
    sei();    
 }
 
