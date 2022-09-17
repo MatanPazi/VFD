@@ -1,12 +1,15 @@
-Video walkthrough (Upload using programmer!!):
+Upload using Arduino Mega 2560:
 https://youtu.be/aDcdOgW0OU0
+
+Upload using Arduino Uno:
+https://www.youtube.com/watch?v=CQW6Mz6ULrc
+
+
 
 General guides:
 https://www.circuito.io/blog/atmega328p-bootloader/
 
 http://eng-shady-mohsen.blogspot.com/2018/03/programming-atmel-atmega328-pu.html
-
-
 
 
 If using an Arduino Mega as the programmer, remember to change the SPI pin numbers
