@@ -56,11 +56,11 @@
 //millis(), delay() don't work as expected due to use of timers in PWM.
 //Chosen through trial and error.
 #define SHORT_CLICK     10
-#define LONG_CLICK      100
+#define LONG_CLICK      500
 #define POT_SWITCH_SAMPLES  2
 #define TEN_MS_OVF      160         // 160 OVF events (64[us]) results in 10[ms], which is the initial delay we need.
 #define RELAY_CHARGE_WAIT      50000  // 
-#define DISPLAY_BLINK   LONG_CLICK
+#define DISPLAY_BLINK   100
 
 const uint8_t ONE_PHASE[] = {
     SEG_B | SEG_C,                                    // 1
