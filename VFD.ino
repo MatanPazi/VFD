@@ -30,7 +30,6 @@
    515-290 = 225[ns] between PWM signals. Each clock takes 125[ns] (8[MHz]), so I'll take 125*4 = 500[ns] dead time.
    //
    //To-do *****************************************************************************
-   Need to increase "LONG_CLICK" and DISPLAY_BLINK. Long click effect happens after a very short click. And the blinking is way too fast.
    *************************************************************************************
 */
 #define _DISABLE_ARDUINO_TIMER0_INTERRUPT_HANDLER_  //These 2 lines were added to be able to compile. Also changed wiring.c file. Disables the previous overflow handles used for millis(), micros(), delay() etc.
@@ -55,13 +54,13 @@
 #define PWM_NOT_RUNNING 1
 #define PWM_NOT_SET 0
 //millis(), delay() don't work as expected due to use of timers in PWM.
-//Approx. time of loop ~
-#define SHORT_CLICK     3
-#define LONG_CLICK      25
+//Chosen through trial and error.
+#define SHORT_CLICK     10
+#define LONG_CLICK      100
 #define POT_SWITCH_SAMPLES  2
 #define TEN_MS_OVF      160         // 160 OVF events (64[us]) results in 10[ms], which is the initial delay we need.
-#define RELAY_CHARGE_WAIT      500  // 
-#define DISPLAY_BLINK   25
+#define RELAY_CHARGE_WAIT      50000  // 
+#define DISPLAY_BLINK   LONG_CLICK
 
 const uint8_t ONE_PHASE[] = {
     SEG_B | SEG_C,                                    // 1
@@ -132,7 +131,7 @@ void setup()
   PORTC = (1 << PORTC3) | (1 << PORTC4);      //Activates internal pull up for PC3 (ADC3) and PC4 (ADC4). Default pin state is input. Potentiometer switch and button respectively   
   DDRB = (1 << DDB0);                         //Sets PB0 pin to output (Default is LOW). Commands the relay
   Wait_A_Bit(RELAY_CHARGE_WAIT);              //Using this function since delay() doesn't seem to work correctly when ISR is activated. Not needed to delay if interrupts are enabled.
-                                              //Waiting this delay to let the capacitors charge up. ~3 seconds.
+                                              //Waiting this delay to let the capacitors charge up. Requires ~3 seconds.
   PORTB = (1 << PORTB0);                      //Set output pin to the relay high, to bypass the high power resistor after the caps were sufficiently charged
 }
 void loop()
