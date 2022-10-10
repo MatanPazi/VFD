@@ -357,6 +357,11 @@ void Pwm_Config()
        TIMSK0 = (1 << TOIE0);      //Timer/Counter0 Overflow Interrupt Enable
        OCR0A = 0;     //Sign determined by set or clear at count-up. High-side IGBT OFF.
        OCR0B = 127;   //Sign determined by set or clear at count-up. Low-side IGBT 50% duty cycle to charge bootstrap cap.
+       // Timer 1
+       TCCR1A = (1 << COM1A1) | (1 << COM1B1) | (1 << COM1B0) | (1 << WGM10); // Clear OC1A and set OC1B counting up. Waveform mode 1 (Table 14-8)
+       TCCR1B = (1 << CS10);       //No prescaler
+       OCR1A = 0;     //Sign determined by set or clear at count-up. High-side IGBT OFF.
+       OCR1B = 127;   //Sign determined by set or clear at count-up. Low-side IGBT 50% duty cycle to charge bootstrap cap.
        // Timer 2 - Disabled
        TCCR2A = 0;
        TCCR2B = 255;
