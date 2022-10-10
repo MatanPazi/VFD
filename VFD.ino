@@ -18,10 +18,12 @@
    For now, after testing, seems like even at an amplitude of 10%, the sine wave form still remains. So will continue using division for now.
    If operating a 3 phase motor, the 3 sine waves need to be 120 def apart
    If operating a single phase motor, we have 2 options depending on the wiring: (Source: https://youtu.be/FyeJJ3Tp6iY?t=58)
-   1. With the capacitors removed, the phase shift between the main and auxiliary windings is achieved by connecting all three phases and the 3 sine waves can still be 120 degrees apart.
+   We'll always assume the capacitors are removed, as they are unnecessary:
+      The phase shift between the main and auxiliary windings will be achieved by connecting all three phases and the 3 sine waves can still be 120 degrees apart.
       Won't be 90 deg phase shifted, but at 120 degrees, will still be reasonable.
-   2. With the capacitor/s installed, the outputs will be inverted. 2 sine waves 180 degrees phase shifted (Simply invert PWM logic for relevant timer).
-   // Setting the LED display
+      However, phase V (As depicted in the image in the source) will always be connected to GND.
+      May be possible in the future to disconnect phase W as the deputy winding is not necessary once reaching a certain speed. But might require a HW change.
+   Additionally, I might add in the future the disconnection of 
    https://lastminuteengineers.com/tm1637-arduino-tutorial/
    //Atmega328 pin numbers:
    http://www.learningaboutelectronics.com/Articles/Atmega328-pinout.php
