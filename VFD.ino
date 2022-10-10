@@ -309,6 +309,8 @@ void Pwm_Disable()
 
 void Pwm_Config()
 {
+   //***Check in scope. Need to make sure the pins are LOW prior to and after setting them to outputs so don't accidentally cause short in IPM.
+   PWM_Running = PWM_RUNNING;
    if (Phase_Config == THREE_PH)  
    {
        DDRD = (1 << DDD6) | (1 << DDD5) | (1 << DDD3); //Sets the OC0A, OC0B and OC2B pins to outputs
