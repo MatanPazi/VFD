@@ -32,6 +32,14 @@
    515-290 = 225[ns] between PWM signals. Each clock takes 125[ns] (8[MHz]), so I'll take 125*4 = 500[ns] dead time.
    //
    //To-do *****************************************************************************
+   All seems to be working well.
+   Now I need to connect RC filters to the PWM outputs to see the actual sine waves and make sure they're phase offset is as it should be.
+   LPF freq should be as low as possible w/o affecting the actual expected sine wave freq.
+   PWM freq is 1/64[us] -> 15625[Hz]. Max sine wave freq is 100[Hz]. I'll choose a freq between ~1000[Hz].
+   I'm currently powering everything from my Arduino UNO to speed up any necessary reprogramming, so I'll choose a pretty high resistance to limit the current consumption.
+   f = 1000[Hz],  R = ~1000[Ohm], C = 1/2*pi*R*f = 159[nF]
+   I have plenty of 100[nF] caps available, and I have 2200[Ohm] resistors -> f = ~720[Hz], good enough.
+   LPF adds phase delay, but since it'll add it to all the signals, it doesn't matter. I only care about the difference between the signals.
    *************************************************************************************
 */
 #define _DISABLE_ARDUINO_TIMER0_INTERRUPT_HANDLER_  //These 2 lines were added to be able to compile. Also changed wiring.c file. Disables the previous overflow handles used for millis(), micros(), delay() etc.
