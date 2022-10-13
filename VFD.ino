@@ -348,6 +348,7 @@ void Pwm_Config()
        TCNT1L = 0;    //Set timer1 low byte to 0
        TCNT2 = 0;     //Set timer2 to 0      
        GTCCR = 0;     //Release all timers
+       Init_PWM_Counter = 0;
        sei();      
    }
    else if (Phase_Config == ONE_PH)
@@ -381,6 +382,7 @@ void Pwm_Config()
        TCNT1L = 0;    //Set timer1 low byte to 0
        TCNT2 = 0;     //Set timer2 to 0      
        GTCCR = 0;     //Release all timers
+       Init_PWM_Counter = 0;
        sei();
    }
 }
