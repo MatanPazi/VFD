@@ -113,11 +113,11 @@ uint32_t Timer_Temp = 0;                  //Used to make sure of consecutive exe
 uint32_t Timer_Temp1 = 0;                 //Used to make sure of consecutive executions
 uint32_t Init_PWM_Counter = 0;            //Used for charging the bootstrap capacitors, source below
 float Amp = Min_Amp;                      //Sine wave amplitude
-volatile uint8_t Desired_Freq = Min_Freq; //Desired sine wave freq [Hz]
-volatile uint8_t Sine_Index = 0;          //3 sine wave indices are used to allow for phase shifted sine waves.
-volatile uint8_t Sine_Index_120 = Sine_Len / 3;
-volatile uint8_t Sine_Index_240 = (Sine_Len * 2) / 3;       //Sine_Len must be lower than 128, otherwise, change eq. 
-volatile uint32_t OVF_Counter = 0;        //Increments every Timer0 overflow
+uint8_t Desired_Freq = Min_Freq;          //Desired sine wave freq [Hz]
+uint8_t Sine_Index = 0;                   //3 sine wave indices are used to allow for phase shifted sine waves.
+uint8_t Sine_Index_120 = Sine_Len / 3;
+uint8_t Sine_Index_240 = (Sine_Len * 2) / 3;       //Sine_Len must be lower than 128, otherwise, change eq. 
+uint8_t OVF_Counter = 0;                  //Increments every Timer0 overflow
 
 TM1637Display Display1(CLK1, DIO1);
 TM1637Display Display2(CLK2, DIO2);
@@ -148,10 +148,10 @@ void loop()
 {   
    //Calculate variables
    Curr_Value = ((analogRead(CURR_INPUT) >> 4) << 7);        //A value of 1023 (5V) -> 8000[mA]. First divide by 16 then multiply by 128. Gives resolution of 128[mA]
-   Desired_Freq = (analogRead(POT_INPUT) >> 3);              //A value of 1023 (5V) -> 128[Hz]. Divide result by 8 to get value in Hz. Gives resolution of 1[Hz]
+   Desired_Freq = ((uint8_t)(analogRead(POT_INPUT) >> 3));   //A value of 1023 (5V) -> 128[Hz]. Divide result by 8 to get value in Hz. Gives resolution of 1[Hz]
    if (Desired_Freq < Min_Freq) Desired_Freq = Min_Freq;
    else if (Desired_Freq > Max_Freq) Desired_Freq = Max_Freq;
-   Amp = (float(Desired_Freq) * V_f) / VBus;                 //Calculating the sine wave amplitude based on the desired frequency and the V/f value.
+   Amp = ((float)(Desired_Freq) * V_f) / VBus;                 //Calculating the sine wave amplitude based on the desired frequency and the V/f value.
    if (Amp < Min_Amp) Amp = Min_Amp;      
    else if (Amp > Max_Amp) Amp = Max_Amp;
    //Run functions
@@ -395,7 +395,7 @@ ISR (TIMER0_OVF_vect)
    else if (PWM_Running == PWM_RUNNING)
    {
       OVF_Counter++;   
-      if (OVF_Counter >= (Base_Freq / Desired_Freq))
+      if (OVF_Counter >= ((uint8_t)(Base_Freq / Desired_Freq)))
       {
          if (Sine_Index == Sine_Len) Sine_Index = 0;
          if (Sine_Index_120 == Sine_Len) Sine_Index_120 = 0;
