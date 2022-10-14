@@ -88,6 +88,8 @@ const uint8_t Sine[] = {0x7f,0xb5,0xe1,0xfa,0xfa,0xe1,0xb5,0x7f,0x48,0x1c,0x3,0x
 const uint8_t Sine_Len = 15;              //Sine table length
 const uint8_t Min_Freq = 20;              //Minimal demanded sine wave frequency
 const uint8_t Max_Freq = 120;             //Maximal demanded sine wave frequency
+const uint8_t Sine_Index_120 = Sine_Len / 3;
+const uint8_t Sine_Index_240 = (Sine_Len * 2) / 3;       //Sine_Len must be lower than 128, otherwise, change eq. 
 float DT = 1.0;                           //Dead time to prevent short-circuit betweem high & low mosfets
 const uint16_t Base_Freq = 1041;          //[Hz] Maximal frequency if the sine wave array index is incremented every OVF occurance 
 const float Min_Amp = 0.1;                //Minimal allowed sine wave amplitude
@@ -110,8 +112,6 @@ uint32_t Init_PWM_Counter = 0;            //Used for charging the bootstrap capa
 float Amp = Min_Amp;                      //Sine wave amplitude
 uint8_t Desired_Freq = Min_Freq;          //Desired sine wave freq [Hz]
 uint8_t Sine_Index = 0;                   //3 sine wave indices are used to allow for phase shifted sine waves.
-uint8_t Sine_Index_120 = Sine_Len / 3;
-uint8_t Sine_Index_240 = (Sine_Len * 2) / 3;       //Sine_Len must be lower than 128, otherwise, change eq. 
 uint8_t OVF_Counter = 0;                  //Increments every Timer0 overflow
 uint8_t OVF_Counter_Compare = 0;          //Compare OVF_Counter to this value (Base freq/ desired freq)
 
@@ -394,9 +394,7 @@ ISR (TIMER0_OVF_vect)
    OVF_Counter++;   
    if (OVF_Counter >= OVF_Counter_Compare)
    {
-      if (Sine_Index == Sine_Len) Sine_Index = 0;
-      if (Sine_Index_120 == Sine_Len) Sine_Index_120 = 0;
-      if (Sine_Index_240 == Sine_Len) Sine_Index_240 = 0;    
+      if (Sine_Index == Sine_Len) Sine_Index = 0; 
       //  
       if ((Amp * (float)Sine[Sine_Index] - 2*DT) < 0)
       {
@@ -409,33 +407,31 @@ ISR (TIMER0_OVF_vect)
          OCR0B = uint8_t(Amp * (float)Sine[Sine_Index] + 2*DT);
       }
 
-      if ((Amp * (float)Sine[Sine_Index_120] - 2*DT) < 0)
+      if ((Amp * (float)Sine[Sine_Index + Sine_Index_120] - 2*DT) < 0)
       {
          OCR1A = 0;
          OCR1B = uint8_t(4*DT);
       }
       else
       {
-         OCR1A = uint8_t(Amp * (float)Sine[Sine_Index_120] - 2*DT);
-         OCR1B = uint8_t(Amp * (float)Sine[Sine_Index_120] + 2*DT);
+         OCR1A = uint8_t(Amp * (float)Sine[Sine_Index + Sine_Index_120] - 2*DT);
+         OCR1B = uint8_t(Amp * (float)Sine[Sine_Index + Sine_Index_120] + 2*DT);
       }
 
       if (Phase_Config == THREE_PH)
       {
-         if ((Amp * (float)Sine[Sine_Index_240] - 2*DT) < 0)
+         if ((Amp * (float)Sine[Sine_Index + Sine_Index_240] - 2*DT) < 0)
          {
              OCR2A = 0;
              OCR2B = uint8_t(4*DT);
          }            
          else
          {
-             OCR2A = uint8_t(Amp * (float)Sine[Sine_Index_240] - 2*DT);
-             OCR2B = uint8_t(Amp * (float)Sine[Sine_Index_240] + 2*DT); 
+             OCR2A = uint8_t(Amp * (float)Sine[Sine_Index + Sine_Index_240] - 2*DT);
+             OCR2B = uint8_t(Amp * (float)Sine[Sine_Index + Sine_Index_240] + 2*DT); 
          }
       }
       OVF_Counter = 0;
       Sine_Index++;
-      Sine_Index_120++;
-      Sine_Index_240++;
    }
 }
