@@ -32,9 +32,9 @@
    515-290 = 225[ns] between PWM signals. Each clock takes 125[ns] (8[MHz]), so I'll take 125*4 = 500[ns] dead time.
    //
    //To-do *****************************************************************************
-   With currect interrupt routine I see an improvement.
-   Now seeing a change in PWM compare value every 12 interrupts instead of 15 (Expected is 10).
-   Need to improve a bit more.
+   Checked using the RC filters, seems to work very well. All sine waves are approx. 120 phase shifted.
+   I seem to be exceeding the interrupt time (See commit description).
+   Need to reduce interrupt time.
    *************************************************************************************
 */
 #define _DISABLE_ARDUINO_TIMER0_INTERRUPT_HANDLER_  //These 2 lines were added to be able to compile. Also changed wiring.c file. Disables the previous overflow handles used for millis(), micros(), delay() etc.
@@ -88,9 +88,7 @@ const uint8_t Sine[] = {0x7f,0xb5,0xe1,0xfa,0xfa,0xe1,0xb5,0x7f,0x48,0x1c,0x3,0x
 const uint8_t Sine_Len = 15;              //Sine table length
 const uint8_t Min_Freq = 20;              //Minimal demanded sine wave frequency
 const uint8_t Max_Freq = 120;             //Maximal demanded sine wave frequency
-const uint8_t Sine_Index_120 = Sine_Len / 3;
-const uint8_t Sine_Index_240 = (Sine_Len * 2) / 3;       //Sine_Len must be lower than 128, otherwise, change eq. 
-const uint8_t DT = 1;                     //Dead time to prevent short-circuit betweem high & low mosfets
+float DT = 1.0;                           //Dead time to prevent short-circuit betweem high & low mosfets
 const uint16_t Base_Freq = 1041;          //[Hz] Maximal frequency if the sine wave array index is incremented every OVF occurance 
 const float Min_Amp = 0.1;                //Minimal allowed sine wave amplitude
 const float Max_Amp = 1.0;                //Maximal allowed sine wave amplitude
@@ -112,6 +110,8 @@ uint32_t Init_PWM_Counter = 0;            //Used for charging the bootstrap capa
 float Amp = Min_Amp;                      //Sine wave amplitude
 uint8_t Desired_Freq = Min_Freq;          //Desired sine wave freq [Hz]
 uint8_t Sine_Index = 0;                   //3 sine wave indices are used to allow for phase shifted sine waves.
+uint8_t Sine_Index_120 = Sine_Len / 3;
+uint8_t Sine_Index_240 = (Sine_Len * 2) / 3;       //Sine_Len must be lower than 128, otherwise, change eq. 
 uint8_t OVF_Counter = 0;                  //Increments every Timer0 overflow
 uint8_t OVF_Counter_Compare = 0;          //Compare OVF_Counter to this value (Base freq/ desired freq)
 
@@ -147,7 +147,7 @@ void loop()
    Desired_Freq = ((uint8_t)(analogRead(POT_INPUT) >> 3));   //A value of 1023 (5V) -> 128[Hz]. Divide result by 8 to get value in Hz. Gives resolution of 1[Hz]
    if (Desired_Freq < Min_Freq) Desired_Freq = Min_Freq;
    else if (Desired_Freq > Max_Freq) Desired_Freq = Max_Freq;
-   OVF_Counter_Compare = (uint8_t)(Base_Freq / Desired_Freq);
+   OVF_Counter_Compare = (uint8_t)(Base_Freq / Desired_Freq)
    Amp = ((float)(Desired_Freq) * V_f) / VBus;                 //Calculating the sine wave amplitude based on the desired frequency and the V/f value.
    if (Amp < Min_Amp) Amp = Min_Amp;      
    else if (Amp > Max_Amp) Amp = Max_Amp;
@@ -394,7 +394,9 @@ ISR (TIMER0_OVF_vect)
    OVF_Counter++;   
    if (OVF_Counter >= OVF_Counter_Compare)
    {
-      if (Sine_Index == Sine_Len) Sine_Index = 0; 
+      if (Sine_Index == Sine_Len) Sine_Index = 0;
+      if (Sine_Index_120 == Sine_Len) Sine_Index_120 = 0;
+      if (Sine_Index_240 == Sine_Len) Sine_Index_240 = 0;    
       //  
       if ((Amp * (float)Sine[Sine_Index] - 2*DT) < 0)
       {
@@ -407,29 +409,33 @@ ISR (TIMER0_OVF_vect)
          OCR0B = uint8_t(Amp * (float)Sine[Sine_Index] + 2*DT);
       }
 
-      if ((Amp * (float)Sine[Sine_Index + Sine_Index_120] - 2*DT) < 0)
+      if ((Amp * (float)Sine[Sine_Index_120] - 2*DT) < 0)
       {
          OCR1A = 0;
          OCR1B = uint8_t(4*DT);
       }
       else
       {
-         OCR1A = uint8_t(Amp * (float)Sine[Sine_Index + Sine_Index_120] - 2*DT);
-         OCR1B = uint8_t(Amp * (float)Sine[Sine_Index + Sine_Index_120] + 2*DT);
+         OCR1A = uint8_t(Amp * (float)Sine[Sine_Index_120] - 2*DT);
+         OCR1B = uint8_t(Amp * (float)Sine[Sine_Index_120] + 2*DT);
       }
 
-      if ((Amp * (float)Sine[Sine_Index + Sine_Index_240] - 2*DT) < 0)
+      if (Phase_Config == THREE_PH)
       {
-          OCR2A = 0;
-          OCR2B = uint8_t(4*DT);
-      }            
-      else
-      {
-          OCR2A = uint8_t(Amp * (float)Sine[Sine_Index + Sine_Index_240] - 2*DT);
-          OCR2B = uint8_t(Amp * (float)Sine[Sine_Index + Sine_Index_240] + 2*DT); 
+         if ((Amp * (float)Sine[Sine_Index_240] - 2*DT) < 0)
+         {
+             OCR2A = 0;
+             OCR2B = uint8_t(4*DT);
+         }            
+         else
+         {
+             OCR2A = uint8_t(Amp * (float)Sine[Sine_Index_240] - 2*DT);
+             OCR2B = uint8_t(Amp * (float)Sine[Sine_Index_240] + 2*DT); 
+         }
       }
-      
       OVF_Counter = 0;
       Sine_Index++;
+      Sine_Index_120++;
+      Sine_Index_240++;
    }
 }
