@@ -63,7 +63,7 @@
 #define SHORT_CLICK     10
 #define LONG_CLICK      500
 #define POT_SWITCH_SAMPLES  2
-#define TEN_MS_OVF      160         // 160 OVF events (64[us]) results in 10[ms], which is the initial delay we need.
+#define BOOT_CAP_CHARGE_TIME   160         // Need at least 10 [ms] to charge the boot caps. Chosen through trial and error.
 #define RELAY_CHARGE_WAIT      50000  // 
 #define DISPLAY_BLINK   100
 
@@ -346,6 +346,7 @@ void Pwm_Config()
        TCNT2 = 0;     //Set timer2 to 0      
        GTCCR = 0;     //Release all timers
        Init_PWM_Counter = 0;
+       Wait_A_Bit(BOOT_CAP_CHARGE_TIME);
        sei();      
    }
    else if (Phase_Config == ONE_PH)
@@ -380,6 +381,7 @@ void Pwm_Config()
        TCNT2 = 0;     //Set timer2 to 0      
        GTCCR = 0;     //Release all timers
        Init_PWM_Counter = 0;
+       Wait_A_Bit(BOOT_CAP_CHARGE_TIME);
        sei();
    }
 }
@@ -388,8 +390,7 @@ void Pwm_Config()
 
 ISR (TIMER0_OVF_vect)
 {   
-   if (Init_PWM_Counter < TEN_MS_OVF) Init_PWM_Counter++;           //Charge bootstrap cap as recommended by "Initial bootstrap capacitor charging" section in AN4840 by ST
-   else if (PWM_Running == PWM_RUNNING)
+   if (PWM_Running == PWM_RUNNING)
    {
       OVF_Counter++;   
       if (OVF_Counter >= OVF_Counter_Compare)
