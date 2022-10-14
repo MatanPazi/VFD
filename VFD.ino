@@ -315,12 +315,12 @@ void Pwm_Disable()
 void Pwm_Config()
 {
    //***Check in scope. Need to make sure the pins are LOW prior to and after setting them to outputs so don't accidentally cause short in IPM.
-   PWM_Running = PWM_RUNNING;
    if (Phase_Config == THREE_PH)  
    {
        DDRD = (1 << DDD6) | (1 << DDD5) | (1 << DDD3); //Sets the OC0A, OC0B and OC2B pins to outputs
        DDRB = (1 << DDB3) | (1 << DDB2) | (1 << DDB1); //Sets the OC2A, OC1B and OC1A pins to outputs
        cli();                      //Disable interrupts
+       PWM_Running = PWM_RUNNING;
        //Synchronising all 3 timers 1st segment. Source: http://www.openmusiclabs.com/learning/digital/synchronizing-timers/index.html
        GTCCR = (1<<TSM)|(1<<PSRASY)|(1<<PSRSYNC); //Halt all timers
        //Timer 0
@@ -356,6 +356,7 @@ void Pwm_Config()
        PORTB &= 0xF7;                                   //Clear the 3rd bit. Set output pin of the 3rd phase high-side to LOW. Third phase should be always connected to GND
        PORTD |= (1 << PORTD3);                          //Set the 3rd bit. Set output pin of the 3rd phase low-side to HIGH. Third phase should be always connected to GND
        cli();                      //Disable interrupts
+       PWM_Running = PWM_RUNNING;
        //Synchronising all 3 timers 1st segment. Source: http://www.openmusiclabs.com/learning/digital/synchronizing-timers/index.html
        GTCCR = (1<<TSM)|(1<<PSRASY)|(1<<PSRSYNC); //Halt all timers
        //Timer 0
@@ -390,54 +391,51 @@ void Pwm_Config()
 
 ISR (TIMER0_OVF_vect)
 {   
-   if (PWM_Running == PWM_RUNNING)
+   OVF_Counter++;   
+   if (OVF_Counter >= OVF_Counter_Compare)
    {
-      OVF_Counter++;   
-      if (OVF_Counter >= OVF_Counter_Compare)
+      if (Sine_Index == Sine_Len) Sine_Index = 0;
+      if (Sine_Index_120 == Sine_Len) Sine_Index_120 = 0;
+      if (Sine_Index_240 == Sine_Len) Sine_Index_240 = 0;    
+      //  
+      if ((Amp * (float)Sine[Sine_Index] - 2*DT) < 0)
       {
-         if (Sine_Index == Sine_Len) Sine_Index = 0;
-         if (Sine_Index_120 == Sine_Len) Sine_Index_120 = 0;
-         if (Sine_Index_240 == Sine_Len) Sine_Index_240 = 0;    
-         //  
-         if ((Amp * (float)Sine[Sine_Index] - 2*DT) < 0)
-         {
-            OCR0A = 0;
-            OCR0B = uint8_t(4*DT);
-         }
-         else
-         {
-            OCR0A = uint8_t(Amp * (float)Sine[Sine_Index] - 2*DT);
-            OCR0B = uint8_t(Amp * (float)Sine[Sine_Index] + 2*DT);
-         }
-         
-         if ((Amp * (float)Sine[Sine_Index_120] - 2*DT) < 0)
-         {
-            OCR1A = 0;
-            OCR1B = uint8_t(4*DT);
-         }
-         else
-         {
-            OCR1A = uint8_t(Amp * (float)Sine[Sine_Index_120] - 2*DT);
-            OCR1B = uint8_t(Amp * (float)Sine[Sine_Index_120] + 2*DT);
-         }
-
-         if (Phase_Config == THREE_PH)
-         {
-            if ((Amp * (float)Sine[Sine_Index_240] - 2*DT) < 0)
-            {
-                OCR2A = 0;
-                OCR2B = uint8_t(4*DT);
-            }            
-            else
-            {
-                OCR2A = uint8_t(Amp * (float)Sine[Sine_Index_240] - 2*DT);
-                OCR2B = uint8_t(Amp * (float)Sine[Sine_Index_240] + 2*DT); 
-            }
-         }
-         OVF_Counter = 0;
-         Sine_Index++;
-         Sine_Index_120++;
-         Sine_Index_240++;
+         OCR0A = 0;
+         OCR0B = uint8_t(4*DT);
       }
+      else
+      {
+         OCR0A = uint8_t(Amp * (float)Sine[Sine_Index] - 2*DT);
+         OCR0B = uint8_t(Amp * (float)Sine[Sine_Index] + 2*DT);
+      }
+
+      if ((Amp * (float)Sine[Sine_Index_120] - 2*DT) < 0)
+      {
+         OCR1A = 0;
+         OCR1B = uint8_t(4*DT);
+      }
+      else
+      {
+         OCR1A = uint8_t(Amp * (float)Sine[Sine_Index_120] - 2*DT);
+         OCR1B = uint8_t(Amp * (float)Sine[Sine_Index_120] + 2*DT);
+      }
+
+      if (Phase_Config == THREE_PH)
+      {
+         if ((Amp * (float)Sine[Sine_Index_240] - 2*DT) < 0)
+         {
+             OCR2A = 0;
+             OCR2B = uint8_t(4*DT);
+         }            
+         else
+         {
+             OCR2A = uint8_t(Amp * (float)Sine[Sine_Index_240] - 2*DT);
+             OCR2B = uint8_t(Amp * (float)Sine[Sine_Index_240] + 2*DT); 
+         }
+      }
+      OVF_Counter = 0;
+      Sine_Index++;
+      Sine_Index_120++;
+      Sine_Index_240++;
    }
 }
