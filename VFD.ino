@@ -403,39 +403,39 @@ ISR (TIMER0_OVF_vect)
       if (Sine_Index_120 == Sine_Len) Sine_Index_120 = 0;
       if (Sine_Index_240 == Sine_Len) Sine_Index_240 = 0;    
       //  
-      if ((Amp * (float)Sine[Sine_Index] - 2*DT) < 0)
+      if ((Sine_Used[Sine_Index] - 2*DT) < 0)
       {
          OCR0A = 0;
          OCR0B = uint8_t(4*DT);
       }
       else
       {
-         OCR0A = uint8_t(Amp * (float)Sine[Sine_Index] - 2*DT);
-         OCR0B = uint8_t(Amp * (float)Sine[Sine_Index] + 2*DT);
+         OCR0A = uint8_t(Sine_Used[Sine_Index] - 2*DT);
+         OCR0B = uint8_t(Sine_Used[Sine_Index] + 2*DT);
       }
 
-      if ((Amp * (float)Sine[Sine_Index_120] - 2*DT) < 0)
+      if ((Sine_Used[Sine_Index_120] - 2*DT) < 0)
       {
          OCR1A = 0;
          OCR1B = uint8_t(4*DT);
       }
       else
       {
-         OCR1A = uint8_t(Amp * (float)Sine[Sine_Index_120] - 2*DT);
-         OCR1B = uint8_t(Amp * (float)Sine[Sine_Index_120] + 2*DT);
+         OCR1A = uint8_t(Sine_Used[Sine_Index_120] - 2*DT);
+         OCR1B = uint8_t(Sine_Used[Sine_Index_120] + 2*DT);
       }
 
       if (Phase_Config == THREE_PH)
       {
-         if ((Amp * (float)Sine[Sine_Index_240] - 2*DT) < 0)
+         if ((Sine_Used[Sine_Index_240] - 2*DT) < 0)
          {
              OCR2A = 0;
              OCR2B = uint8_t(4*DT);
          }            
          else
          {
-             OCR2A = uint8_t(Amp * (float)Sine[Sine_Index_240] - 2*DT);
-             OCR2B = uint8_t(Amp * (float)Sine[Sine_Index_240] + 2*DT); 
+             OCR2A = uint8_t(Sine_Used[Sine_Index_240] - 2*DT);
+             OCR2B = uint8_t(Sine_Used[Sine_Index_240] + 2*DT); 
          }
       }
       OVF_Counter = 0;
