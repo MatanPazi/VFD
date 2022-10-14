@@ -96,7 +96,7 @@ const float VBus = 230.0;                 //AC voltage [VAC]
 bool  Phase_Config = 0;                   //0: 3 phase, 1: 1 phase
 bool  Config_Editable = 0;                //Is the configuration editable or not (Between 2 long clicks). 0: No, 1: Yes
 int8_t DT = 1;                            //Dead time to prevent short-circuit betweem high & low mosfets
-int16_t Used_Sine[] = {0x7f,0xb5,0xe1,0xfa,0xfa,0xe1,0xb5,0x7f,0x48,0x1c,0x3,0x3,0x1c,0x48,0x7f};
+int16_t Sine_Used[] = {0x7f,0xb5,0xe1,0xfa,0xfa,0xe1,0xb5,0x7f,0x48,0x1c,0x3,0x3,0x1c,0x48,0x7f};
 uint8_t  Click_Type = 0;                  //1: Short, 2: Long
 uint8_t  PWM_Running = PWM_NOT_SET;       //Indicates if the PWM is operating or not. 2 is running, 1 is not, initialized to 0 to indicate not yet set.
 uint16_t Curr_Value = 0;                  //Current value measured in [mA]
@@ -148,10 +148,14 @@ void loop()
    Desired_Freq = ((uint8_t)(analogRead(POT_INPUT) >> 3));   //A value of 1023 (5V) -> 128[Hz]. Divide result by 8 to get value in Hz. Gives resolution of 1[Hz]
    if (Desired_Freq < Min_Freq) Desired_Freq = Min_Freq;
    else if (Desired_Freq > Max_Freq) Desired_Freq = Max_Freq;
-   OVF_Counter_Compare = (uint8_t)(Base_Freq / Desired_Freq)
+   OVF_Counter_Compare = (uint8_t)(Base_Freq / Desired_Freq);
    Amp = ((float)(Desired_Freq) * V_f) / VBus;                 //Calculating the sine wave amplitude based on the desired frequency and the V/f value.
    if (Amp < Min_Amp) Amp = Min_Amp;      
    else if (Amp > Max_Amp) Amp = Max_Amp;   
+   for (int i = 0; i < Sine_Len; i++)
+   {
+      Sine_Used[i] = (int16_t)(Amp * (float)(Sine[i]));
+   }
    //Run functions
    Pot_Switch_State_Check();
    if (PWM_Running != PWM_RUNNING) Button_Click();
