@@ -90,6 +90,7 @@ const uint8_t Min_Freq = 20;              //Minimal demanded sine wave frequency
 const uint8_t Max_Freq = 120;             //Maximal demanded sine wave frequency
 const uint8_t Sine_Index_120 = Sine_Len / 3;
 const uint8_t Sine_Index_240 = (Sine_Len * 2) / 3;       //Sine_Len must be lower than 128, otherwise, change eq. 
+float DT = 1.0;                           //Dead time to prevent short-circuit betweem high & low mosfets
 const uint16_t Base_Freq = 1041;          //[Hz] Maximal frequency if the sine wave array index is incremented every OVF occurance 
 const float Min_Amp = 0.1;                //Minimal allowed sine wave amplitude
 const float Max_Amp = 1.0;                //Maximal allowed sine wave amplitude
@@ -97,14 +98,8 @@ const float V_f = 3.8333;                 //V/f value. ~230[VAC] w/ 60[Hz]
 const float VBus = 230.0;                 //AC voltage [VAC]
 bool  Phase_Config = 0;                   //0: 3 phase, 1: 1 phase
 bool  Config_Editable = 0;                //Is the configuration editable or not (Between 2 long clicks). 0: No, 1: Yes
-uint8_t Sine_Temp[] = {0x7f,0xb5,0xe1,0xfa,0xfa,0xe1,0xb5,0x7f,0x48,0x1c,0x3,0x3,0x1c,0x48,0x7f};
-uint8_t Sine_Used[] = {0x7f,0xb5,0xe1,0xfa,0xfa,0xe1,0xb5,0x7f,0x48,0x1c,0x3,0x3,0x1c,0x48,0x7f};
 uint8_t  Click_Type = 0;                  //1: Short, 2: Long
 uint8_t  PWM_Running = PWM_NOT_SET;       //Indicates if the PWM is operating or not. 2 is running, 1 is not, initialized to 0 to indicate not yet set.
-uint8_t Desired_Freq = Min_Freq;          //Desired sine wave freq [Hz]
-uint8_t Sine_Index = 0;                   //3 sine wave indices are used to allow for phase shifted sine waves.
-uint8_t OVF_Counter = 0;                  //Increments every Timer0 overflow
-uint8_t OVF_Counter_Compare = 0;          //Compare OVF_Counter to this value (Base freq/ desired freq)
 uint16_t Curr_Value = 0;                  //Current value measured in [mA]
 uint32_t Timer = 0;                       //Timer, increments every loop
 uint32_t Click_Timer = 0;                 //Increments while button is clicked
@@ -114,9 +109,11 @@ uint32_t Display_Timer = 0;               //Used for delay of the blinking displ
 uint32_t Timer_Temp = 0;                  //Used to make sure of consecutive executions
 uint32_t Timer_Temp1 = 0;                 //Used to make sure of consecutive executions
 uint32_t Init_PWM_Counter = 0;            //Used for charging the bootstrap capacitors, source below
-float DT = 1.0;                           //Dead time to prevent short-circuit betweem high & low mosfets
 float Amp = Min_Amp;                      //Sine wave amplitude
-
+uint8_t Desired_Freq = Min_Freq;          //Desired sine wave freq [Hz]
+uint8_t Sine_Index = 0;                   //3 sine wave indices are used to allow for phase shifted sine waves.
+uint8_t OVF_Counter = 0;                  //Increments every Timer0 overflow
+uint8_t OVF_Counter_Compare = 0;          //Compare OVF_Counter to this value (Base freq/ desired freq)
 
 TM1637Display Display1(CLK1, DIO1);
 TM1637Display Display2(CLK2, DIO2);
@@ -154,12 +151,6 @@ void loop()
    Amp = ((float)(Desired_Freq) * V_f) / VBus;                 //Calculating the sine wave amplitude based on the desired frequency and the V/f value.
    if (Amp < Min_Amp) Amp = Min_Amp;      
    else if (Amp > Max_Amp) Amp = Max_Amp;
-   // Calculating each Sine array value
-   for (int i = 0; i <= Sine_Len; i++)
-   {
-      Sine_Temp[i] = (uint8_t)(Amp * (float)Sine[i])
-   }
-   Sine_Used[] = Sine_Temp[]  
    //Run functions
    Pot_Switch_State_Check();
    if (PWM_Running != PWM_RUNNING) Button_Click();
@@ -405,7 +396,7 @@ ISR (TIMER0_OVF_vect)
    {
       if (Sine_Index == Sine_Len) Sine_Index = 0; 
       //  
-      if ((float)Sine_Used[Sine_Index] - 2*DT) < 0)
+      if ((Amp * (float)Sine[Sine_Index] - 2*DT) < 0)
       {
          OCR0A = 0;
          OCR0B = uint8_t(4*DT);
@@ -416,26 +407,26 @@ ISR (TIMER0_OVF_vect)
          OCR0B = uint8_t(Amp * (float)Sine[Sine_Index] + 2*DT);
       }
 
-      if ((float)Sine_Used[Sine_Index + Sine_Index_120] - 2*DT) < 0)
+      if ((Amp * (float)Sine[Sine_Index + Sine_Index_120] - 2*DT) < 0)
       {
          OCR1A = 0;
          OCR1B = uint8_t(4*DT);
       }
       else
       {
-         OCR1A = uint8_t((float)Sine_Used[Sine_Index + Sine_Index_120] - 2*DT);
-         OCR1B = uint8_t((float)Sine_Used[Sine_Index + Sine_Index_120] + 2*DT);
+         OCR1A = uint8_t(Amp * (float)Sine[Sine_Index + Sine_Index_120] - 2*DT);
+         OCR1B = uint8_t(Amp * (float)Sine[Sine_Index + Sine_Index_120] + 2*DT);
       }
 
-      if (((float)Sine_Used[Sine_Index + Sine_Index_240] - 2*DT) < 0)
+      if ((Amp * (float)Sine[Sine_Index + Sine_Index_240] - 2*DT) < 0)
       {
           OCR2A = 0;
           OCR2B = uint8_t(4*DT);
       }            
       else
       {
-          OCR2A = (uint8_t)((float)Sine_Used[Sine_Index + Sine_Index_240] - 2*DT);
-          OCR2B = (uint8_t)((float)Sine_Used[Sine_Index + Sine_Index_240] + 2*DT); 
+          OCR2A = uint8_t(Amp * (float)Sine[Sine_Index + Sine_Index_240] - 2*DT);
+          OCR2B = uint8_t(Amp * (float)Sine[Sine_Index + Sine_Index_240] + 2*DT); 
       }
       
       OVF_Counter = 0;
