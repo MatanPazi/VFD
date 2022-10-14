@@ -32,9 +32,9 @@
    515-290 = 225[ns] between PWM signals. Each clock takes 125[ns] (8[MHz]), so I'll take 125*4 = 500[ns] dead time.
    //
    //To-do *****************************************************************************
-   Checked using the RC filters, seems to work very well. All sine waves are approx. 120 phase shifted.
-   I seem to be exceeding the interrupt time (See commit description).
-   Need to reduce interrupt time.
+   With currect interrupt routine I see an improvement.
+   Now seeing a change in PWM compare value every 12 interrupts instead of 15 (Expected is 10).
+   Need to improve a bit more.
    *************************************************************************************
 */
 #define _DISABLE_ARDUINO_TIMER0_INTERRUPT_HANDLER_  //These 2 lines were added to be able to compile. Also changed wiring.c file. Disables the previous overflow handles used for millis(), micros(), delay() etc.
