@@ -32,7 +32,10 @@
    515-290 = 225[ns] between PWM signals. Each clock takes 125[ns] (8[MHz]), so I'll take 125*5 = 625[ns] dead time.
    //
    //To-do *****************************************************************************
-   Tested compare B. Looks good. Exactly 625[ns] dead time.
+   Everything seems to work well in low voltage side.
+   Need to start testing high voltage side.
+   I'll start by comparing the commanded signal from the CPU and the actual signal reaching the IPM.
+   Need to power the 5V of the high voltage side for this.
    *************************************************************************************
 */
 #define _DISABLE_ARDUINO_TIMER0_INTERRUPT_HANDLER_  //These 2 lines were added to be able to compile. Also changed wiring.c file. Disables the previous overflow handles used for millis(), micros(), delay() etc.
