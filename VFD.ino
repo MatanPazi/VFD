@@ -32,9 +32,8 @@
    515-290 = 225[ns] between PWM signals. Each clock takes 125[ns] (8[MHz]), so I'll take 125*4 = 500[ns] dead time.
    //
    //To-do *****************************************************************************
-   Checked using the RC filters, seems to work very well. All sine waves are approx. 120 phase shifted.
-   I seem to be exceeding the interrupt time (See commit description).
-   Need to reduce interrupt time.
+   Works well. Reducing interrupt time solved issue.
+   Now changed Compare B logic. Need to check compare B values.
    *************************************************************************************
 */
 #define _DISABLE_ARDUINO_TIMER0_INTERRUPT_HANDLER_  //These 2 lines were added to be able to compile. Also changed wiring.c file. Disables the previous overflow handles used for millis(), micros(), delay() etc.
@@ -406,38 +405,33 @@ ISR (TIMER0_OVF_vect)
       if ((Sine_Used[Sine_Index] - 2*DT) < 0)
       {
          OCR0A = 0;
-         OCR0B = uint8_t(4*DT);
       }
       else
       {
-         OCR0A = uint8_t(Sine_Used[Sine_Index] - 2*DT);
-         OCR0B = uint8_t(Sine_Used[Sine_Index] + 2*DT);
+         OCR0A = uint8_t(Sine_Used[Sine_Index] - 2*DT);        
       }
+      OCR0B = OCR0A + 4*DT;
 
       if ((Sine_Used[Sine_Index_120] - 2*DT) < 0)
       {
          OCR1A = 0;
-         OCR1B = uint8_t(4*DT);
       }
       else
       {
          OCR1A = uint8_t(Sine_Used[Sine_Index_120] - 2*DT);
-         OCR1B = uint8_t(Sine_Used[Sine_Index_120] + 2*DT);
       }
+      OCR1B = OCR1A + 4*DT;
 
-      if (Phase_Config == THREE_PH)
+      if ((Sine_Used[Sine_Index_240] - 2*DT) < 0)
       {
-         if ((Sine_Used[Sine_Index_240] - 2*DT) < 0)
-         {
-             OCR2A = 0;
-             OCR2B = uint8_t(4*DT);
-         }            
-         else
-         {
-             OCR2A = uint8_t(Sine_Used[Sine_Index_240] - 2*DT);
-             OCR2B = uint8_t(Sine_Used[Sine_Index_240] + 2*DT); 
-         }
+          OCR2A = 0;
+      }            
+      else
+      {
+          OCR2A = uint8_t(Sine_Used[Sine_Index_240] - 2*DT);
       }
+      OCR2B = OCR2A + 4*DT;
+
       OVF_Counter = 0;
       Sine_Index++;
       Sine_Index_120++;
