@@ -29,11 +29,10 @@
    http://www.learningaboutelectronics.com/Articles/Atmega328-pinout.php
    Dead-time:
    Datasheet recommends 1 [us] for each input signal. However, when looking at the datasheet, the turn-on time is 290[ns] and turn off time is 515[ns], so I need a minimum of
-   515-290 = 225[ns] between PWM signals. Each clock takes 125[ns] (8[MHz]), so I'll take 125*4 = 500[ns] dead time.
+   515-290 = 225[ns] between PWM signals. Each clock takes 125[ns] (8[MHz]), so I'll take 125*5 = 625[ns] dead time.
    //
    //To-do *****************************************************************************
-   Works well. Reducing interrupt time solved issue.
-   Now changed Compare B logic. Need to check compare B values.
+   Tested compare B. Looks good. Exactly 625[ns] dead time.
    *************************************************************************************
 */
 #define _DISABLE_ARDUINO_TIMER0_INTERRUPT_HANDLER_  //These 2 lines were added to be able to compile. Also changed wiring.c file. Disables the previous overflow handles used for millis(), micros(), delay() etc.
@@ -410,7 +409,7 @@ ISR (TIMER0_OVF_vect)
       {
          OCR0A = uint8_t(Sine_Used[Sine_Index] - 2*DT);        
       }
-      OCR0B = OCR0A + 4*DT;
+      OCR0B = OCR0A + 5*DT;
 
       if ((Sine_Used[Sine_Index_120] - 2*DT) < 0)
       {
@@ -420,7 +419,7 @@ ISR (TIMER0_OVF_vect)
       {
          OCR1A = uint8_t(Sine_Used[Sine_Index_120] - 2*DT);
       }
-      OCR1B = OCR1A + 4*DT;
+      OCR1B = OCR1A + 5*DT;
 
       if ((Sine_Used[Sine_Index_240] - 2*DT) < 0)
       {
@@ -430,7 +429,7 @@ ISR (TIMER0_OVF_vect)
       {
           OCR2A = uint8_t(Sine_Used[Sine_Index_240] - 2*DT);
       }
-      OCR2B = OCR2A + 4*DT;
+      OCR2B = OCR2A + 5*DT;
 
       OVF_Counter = 0;
       Sine_Index++;
