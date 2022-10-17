@@ -399,9 +399,9 @@ ISR (TIMER0_OVF_vect)
    OVF_Counter++;   
    if (OVF_Counter >= OVF_Counter_Compare)
    {
-      if (Sine_Index == Sine_Len) Sine_Index = 0;
-      if (Sine_Index_120 == Sine_Len) Sine_Index_120 = 0;
-      if (Sine_Index_240 == Sine_Len) Sine_Index_240 = 0;    
+      Sine_Index = Sine_Index % Sine_Len;
+      Sine_Index_120 = Sine_Index_120 % Sine_Len;
+      Sine_Index_240 = Sine_Index_240 % Sine_Len ;
       //  
       if ((Sine_Used[Sine_Index] - 2*DT) < 0)
       {
@@ -410,8 +410,8 @@ ISR (TIMER0_OVF_vect)
       }
       else
       {
-         OCR0A = uint8_t(Sine_Used[Sine_Index] - 2*DT);
-         OCR0B = uint8_t(Sine_Used[Sine_Index] + 2*DT);
+         OCR0A = uint8_t(Sine_Used[Sine_Index] - 2*DT) & 0xFF;
+         OCR0B = uint8_t(Sine_Used[Sine_Index] + 2*DT) & 0xFF;
       }
 
       if ((Sine_Used[Sine_Index_120] - 2*DT) < 0)
