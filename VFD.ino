@@ -398,9 +398,9 @@ ISR (TIMER0_OVF_vect)
    OVF_Counter++;   
    if (OVF_Counter >= OVF_Counter_Compare)
    {
-      Sine_Index = Sine_Index % Sine_Len;
-      Sine_Index_120 = Sine_Index_120 % Sine_Len;
-      Sine_Index_240 = Sine_Index_240 % Sine_Len ;
+      if (Sine_Index == Sine_Len) Sine_Index = 0;
+      if (Sine_Index_120 == Sine_Len) Sine_Index_120 = 0;
+      if (Sine_Index_240 == Sine_Len) Sine_Index_240 = 0;    
       //  
       if ((Sine_Used[Sine_Index] - 2*DT) < 0)
       {
