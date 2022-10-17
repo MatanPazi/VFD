@@ -410,8 +410,8 @@ ISR (TIMER0_OVF_vect)
       }
       else
       {
-         OCR0A = uint8_t(Sine_Used[Sine_Index] - 2*DT) & 0xFF;
-         OCR0B = uint8_t(Sine_Used[Sine_Index] + 2*DT) & 0xFF;
+         OCR0A = uint8_t(Sine_Used[Sine_Index] - 2*DT);
+         OCR0B = uint8_t(Sine_Used[Sine_Index] + 2*DT);
       }
 
       if ((Sine_Used[Sine_Index_120] - 2*DT) < 0)
