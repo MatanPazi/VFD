@@ -85,7 +85,7 @@ const uint8_t SPACE[] = {
     }; 
 
 // Generated using: https://www.daycounter.com/Calculators/Sine-Generator-Calculator.phtml
-const int16_t Sine[] = {0x7f,0xb5,0xe1,0xfa,0xfa,0xe1,0xb5,0x7f,0x48,0x1c,0x3,0x3,0x1c,0x48,0x7f};
+const int16_t Sine[] = {125,179,223,247,247,223,179,125,71,27,6,6,27,71,125};
 const uint8_t Sine_Len = 15;              //Sine table length
 const uint8_t Min_Freq = 20;              //Minimal demanded sine wave frequency
 const uint8_t Max_Freq = 120;             //Maximal demanded sine wave frequency
@@ -97,7 +97,7 @@ const float VBus = 230.0;                 //AC voltage [VAC]
 bool  Phase_Config = 0;                   //0: 3 phase, 1: 1 phase
 bool  Config_Editable = 0;                //Is the configuration editable or not (Between 2 long clicks). 0: No, 1: Yes
 int8_t DT = 1;                            //Dead time to prevent short-circuit betweem high & low mosfets
-int16_t Sine_Used[] = {0x7f,0xb5,0xe1,0xfa,0xfa,0xe1,0xb5,0x7f,0x48,0x1c,0x3,0x3,0x1c,0x48,0x7f};
+int16_t Sine_Used[] = {125,179,223,247,247,223,179,125,71,27,6,6,27,71,125};
 uint8_t  Click_Type = 0;                  //1: Short, 2: Long
 uint8_t  PWM_Running = PWM_NOT_SET;       //Indicates if the PWM is operating or not. 2 is running, 1 is not, initialized to 0 to indicate not yet set.
 uint16_t Curr_Value = 0;                  //Current value measured in [mA]
