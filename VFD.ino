@@ -67,6 +67,7 @@
 #define BOOT_CAP_CHARGE_TIME   160         // Need at least 10 [ms] to charge the boot caps. Chosen through trial and error.
 #define RELAY_CHARGE_WAIT      50000  // 
 #define DISPLAY_BLINK   100
+#define MIN_PWM_VAL   6                   // Due to isolator response time. Found through trial and error
 
 const uint8_t ONE_PHASE[] = {
     SEG_B | SEG_C,                                    // 1
@@ -85,7 +86,7 @@ const uint8_t SPACE[] = {
     }; 
 
 // Generated using: https://www.daycounter.com/Calculators/Sine-Generator-Calculator.phtml
-const int16_t Sine[] = {125,179,223,247,247,223,179,125,71,27,6,6,27,71,125};
+const int16_t Sine[] = {125,179,223,246,246,223,179,125,71,27,6,6,27,71,125};
 const uint8_t Sine_Len = 15;              //Sine table length
 const uint8_t Min_Freq = 20;              //Minimal demanded sine wave frequency
 const uint8_t Max_Freq = 120;             //Maximal demanded sine wave frequency
@@ -97,7 +98,7 @@ const float VBus = 230.0;                 //AC voltage [VAC]
 bool  Phase_Config = 0;                   //0: 3 phase, 1: 1 phase
 bool  Config_Editable = 0;                //Is the configuration editable or not (Between 2 long clicks). 0: No, 1: Yes
 int8_t DT = 1;                            //Dead time to prevent short-circuit betweem high & low mosfets
-int16_t Sine_Used[] = {125,179,223,247,247,223,179,125,71,27,6,6,27,71,125};
+int16_t Sine_Used[] = {125,179,223,246,246,223,179,125,71,27,6,6,27,71,125};
 uint8_t  Click_Type = 0;                  //1: Short, 2: Long
 uint8_t  PWM_Running = PWM_NOT_SET;       //Indicates if the PWM is operating or not. 2 is running, 1 is not, initialized to 0 to indicate not yet set.
 uint16_t Curr_Value = 0;                  //Current value measured in [mA]
@@ -404,7 +405,7 @@ ISR (TIMER0_OVF_vect)
       if (Sine_Index_120 == Sine_Len) Sine_Index_120 = 0;
       if (Sine_Index_240 == Sine_Len) Sine_Index_240 = 0;    
       //  
-      if ((Sine_Used[Sine_Index] - 2*DT) < 0)
+      if ((Sine_Used[Sine_Index] - 2*DT) < MIN_PWM_VAL)
       {
          OCR0A = 0;
       }
@@ -414,7 +415,7 @@ ISR (TIMER0_OVF_vect)
       }
       OCR0B = OCR0A + 5*DT;
 
-      if ((Sine_Used[Sine_Index_120] - 2*DT) < 0)
+      if ((Sine_Used[Sine_Index_120] - 2*DT) < MIN_PWM_VAL)
       {
          OCR1A = 0;
       }
@@ -424,7 +425,7 @@ ISR (TIMER0_OVF_vect)
       }
       OCR1B = OCR1A + 5*DT;
 
-      if ((Sine_Used[Sine_Index_240] - 2*DT) < 0)
+      if ((Sine_Used[Sine_Index_240] - 2*DT) < MIN_PWM_VAL)
       {
           OCR2A = 0;
       }            
