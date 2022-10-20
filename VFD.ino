@@ -34,8 +34,8 @@
    //To-do *****************************************************************************
    High voltage side seems good. Edge case isn't looking good due to isolator.
    A value doesn't have enough time to rise to 5V level due to Isolator "low pass filter".
-   Need to consider what to do. Set min value of sine array a bit higher?
-   Or maybe saturate to 0 values bellow a certain threshold since they won't reach 5V?
+   The isolator data rate is 10Mbps, so approx 200 [ns] rise/fall time.
+   So the minimal value in the Used_Sine ought to be ~6 (Taking spare).
    *************************************************************************************
 */
 #define _DISABLE_ARDUINO_TIMER0_INTERRUPT_HANDLER_  //These 2 lines were added to be able to compile. Also changed wiring.c file. Disables the previous overflow handles used for millis(), micros(), delay() etc.
