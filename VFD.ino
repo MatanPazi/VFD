@@ -32,10 +32,9 @@
    515-290 = 225[ns] between PWM signals. Each clock takes 125[ns] (8[MHz]), so I'll take 125*5 = 625[ns] dead time.
    //
    //To-do *****************************************************************************
-   High voltage side seems good. Edge case isn't looking good due to isolator.
-   A value doesn't have enough time to rise to 5V level due to Isolator "low pass filter".
-   The isolator data rate is 10Mbps, so approx 200 [ns] rise/fall time.
-   So the minimal value in the Used_Sine ought to be ~6 (Taking spare).
+   Uploading using ftdi programmer isn't working.
+   Try putting a ceramic 100nf cap between DTR and reset pin, reference:
+   https://www.youtube.com/watch?v=xEnIgC3hCnM
    *************************************************************************************
 */
 #define _DISABLE_ARDUINO_TIMER0_INTERRUPT_HANDLER_  //These 2 lines were added to be able to compile. Also changed wiring.c file. Disables the previous overflow handles used for millis(), micros(), delay() etc.
