@@ -19,17 +19,17 @@
    If operating a 3 phase motor, the 3 sine waves need to be 120 def apart
    If operating a single phase motor, we have 2 options depending on the wiring: (Source: https://youtu.be/FyeJJ3Tp6iY?t=58)
    We'll always assume the capacitors are removed, as they are unnecessary:
-      The phase shift between the main and auxiliary windings will be achieved by connecting all three phases and the 3 sine waves can still be 120 degrees apart.
-      Won't be 90 deg phase shifted, but at 120 degrees, will still be reasonable.
-      However, phase V (As depicted in the image in the source) will always be connected to GND.
+      The phase shift between the main and auxiliary windings won't be 90, but at 120 degrees, will still be reasonable.
+      Phase V (As depicted in the image in the source) will always be connected to GND.
       May be possible in the future to disconnect phase W as the deputy winding is not necessary once reaching a certain speed. But might require a HW change.
-   Additionally, I might add in the future the disconnection of 
+   
+   LED Display tutorial:
    https://lastminuteengineers.com/tm1637-arduino-tutorial/
    //Atmega328 pin numbers:
    http://www.learningaboutelectronics.com/Articles/Atmega328-pinout.php
    Dead-time:
    Datasheet recommends 1 [us] for each input signal. However, when looking at the datasheet, the turn-on time is 290[ns] and turn off time is 515[ns], so I need a minimum of
-   515-290 = 225[ns] between PWM signals. Each clock takes 125[ns] (8[MHz]), so I'll take 125*5 = 625[ns] dead time.
+   515-290 = 225[ns] between PWM signals. Each clock takes 125[ns] (8[MHz]), so I'll take 125*5 = 625[ns] dead time, just in case since the isolators add delay as well.
    //
    //To-do *****************************************************************************
    Uploading using ftdi programmer isn't working.
