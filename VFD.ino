@@ -64,7 +64,7 @@
 #define LONG_CLICK      500
 #define POT_SWITCH_SAMPLES  2
 #define BOOT_CAP_CHARGE_TIME   160         // Need at least 10 [ms] to charge the boot caps. Chosen through trial and error.
-#define RELAY_CHARGE_WAIT      1000000     // Approx. 3 seconds
+#define RELAY_CHARGE_WAIT      2000000     // Approx. 8 seconds
 #define DISPLAY_BLINK   100
 #define MIN_PWM_VAL   6                   // Due to isolator response time. Found through trial and error
 
