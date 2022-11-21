@@ -32,9 +32,9 @@
    515-290 = 225[ns] between PWM signals. Each clock takes 125[ns] (8[MHz]), so I'll take 125*5 = 625[ns] dead time, just in case since the isolators add delay as well.
    //
    //To-do *****************************************************************************
-   Uploading using ftdi programmer isn't working.
-   Try putting a ceramic 100nf cap between DTR and reset pin, reference:
-   https://www.youtube.com/watch?v=xEnIgC3hCnM
+   Critical bug:
+   Configure the pwms pins to be outputs in the setup instead of in Pwm_Config() and
+   set them low. Do this before the relay is switched on.
    *************************************************************************************
 */
 #define _DISABLE_ARDUINO_TIMER0_INTERRUPT_HANDLER_  //These 2 lines were added to be able to compile. Also changed wiring.c file. Disables the previous overflow handles used for millis(), micros(), delay() etc.
