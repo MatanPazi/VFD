@@ -357,8 +357,6 @@ void Pwm_Config()
    }
    else if (Phase_Config == ONE_PH)
    {
-       DDRD = (1 << DDD6) | (1 << DDD5) | (1 << DDD3); //Sets the OC0A, OC0B and OC2B pins to outputs
-       DDRB = (1 << DDB3) | (1 << DDB2) | (1 << DDB1); //Sets the OC2A, OC1B and OC1A pins to outputs
        PORTB &= 0xF7;                                   //Clear the 3rd bit. Set output pin of the 3rd phase high-side to LOW. Third phase should be always connected to GND
        PORTD |= (1 << PORTD3);                          //Set the 3rd bit. Set output pin of the 3rd phase low-side to HIGH. Third phase should be always connected to GND
        cli();                      //Disable interrupts
