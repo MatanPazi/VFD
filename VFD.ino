@@ -312,11 +312,11 @@ void Pwm_Disable()
    cli();
    Init_PWM_Counter = 0;
    TCCR0A = 0;
-   TCCR0B = 255;
+   TCCR0B = 0;
    TCCR1A = 0;
-   TCCR1B = 255;
+   TCCR1B = 0;
    TCCR2A = 0;
-   TCCR2B = 255;
+   TCCR2B = 0;
    sei();    
 }
 
@@ -376,7 +376,7 @@ void Pwm_Config()
        OCR1B = 127;   //Sign determined by set or clear at count-up. Low-side IGBT 50% duty cycle to charge bootstrap cap.
        // Timer 2 - Disabled
        TCCR2A = 0;
-       TCCR2B = 255;
+       TCCR2B = 0;
        OCR2A = 0;     //Sign determined by set or clear at count-up. High-side IGBT OFF.
        OCR2B = 127;   //Sign determined by set or clear at count-up. Low-side IGBT 50% duty cycle to charge bootstrap cap.
        //Synchronising all 3 timers 2nd segment. Source: http://www.openmusiclabs.com/learning/digital/synchronizing-timers/index.html
