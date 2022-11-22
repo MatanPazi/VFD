@@ -137,6 +137,8 @@ void setup()
   Display1.clear();
   Display2.clear();
   PORTC = (1 << PORTC3) | (1 << PORTC4);      //Activates internal pull up for PC3 (ADC3) and PC4 (ADC4). Default pin state is input. Potentiometer switch and button respectively   
+  DDRD = (1 << DDD6) | (1 << DDD5) | (1 << DDD3); //Sets the OC0A, OC0B and OC2B pins to outputs (Default is LOW)
+  DDRB = (1 << DDB3) | (1 << DDB2) | (1 << DDB1); //Sets the OC2A, OC1B and OC1A pins to outputs (Default is LOW)
   DDRB = (1 << DDB0);                         //Sets PB0 pin to output (Default is LOW). Commands the relay
   Wait_A_Bit(RELAY_CHARGE_WAIT);              //Using this function since delay() doesn't seem to work correctly when ISR is activated. Not needed to delay if interrupts are enabled.
                                               //Waiting this delay to let the capacitors charge up. Requires ~3 seconds.
@@ -323,8 +325,6 @@ void Pwm_Config()
    //***Check in scope. Need to make sure the pins are LOW prior to and after setting them to outputs so don't accidentally cause short in IPM.
    if (Phase_Config == THREE_PH)  
    {
-       DDRD = (1 << DDD6) | (1 << DDD5) | (1 << DDD3); //Sets the OC0A, OC0B and OC2B pins to outputs
-       DDRB = (1 << DDB3) | (1 << DDB2) | (1 << DDB1); //Sets the OC2A, OC1B and OC1A pins to outputs
        cli();                      //Disable interrupts
        PWM_Running = PWM_RUNNING;
        //Synchronising all 3 timers 1st segment. Source: http://www.openmusiclabs.com/learning/digital/synchronizing-timers/index.html
