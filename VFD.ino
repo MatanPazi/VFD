@@ -138,8 +138,8 @@ void setup()
   Display2.clear();
   PORTC = (1 << PORTC3) | (1 << PORTC4);      //Activates internal pull up for PC3 (ADC3) and PC4 (ADC4). Default pin state is input. Potentiometer switch and button respectively   
   DDRD = (1 << DDD6) | (1 << DDD5) | (1 << DDD3); //Sets the OC0A, OC0B and OC2B pins to outputs (Default is LOW)
-  DDRB = (1 << DDB3) | (1 << DDB2) | (1 << DDB1); //Sets the OC2A, OC1B and OC1A pins to outputs (Default is LOW)
-  DDRB = (1 << DDB0);                         //Sets PB0 pin to output (Default is LOW). Commands the relay
+  DDRB = (1 << DDB3) | (1 << DDB2) | (1 << DDB1) | (1 << DDB0); //Sets the OC2A, OC1B and OC1A pins to outputs (Default is LOW)
+                                                                //And sets PB0 pin to output (Default is LOW). Commands the relay
   Wait_A_Bit(RELAY_CHARGE_WAIT);              //Using this function since delay() doesn't seem to work correctly when ISR is activated. Not needed to delay if interrupts are enabled.
                                               //Waiting this delay to let the capacitors charge up. Requires ~3 seconds.
   PORTB = (1 << PORTB0);                      //Set output pin to the relay high, to bypass the high power resistor after the caps were sufficiently charged
