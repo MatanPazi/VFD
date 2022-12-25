@@ -357,8 +357,9 @@ void Pwm_Config()
    }
    else if (Phase_Config == ONE_PH)
    {
-       PORTB &= 0xF7;                                   //Clear the 3rd bit. Set output pin of the 3rd phase high-side to LOW. Third phase should be always connected to GND
-       PORTD |= (1 << PORTD3);                          //Set the 3rd bit. Set output pin of the 3rd phase low-side to HIGH. Third phase should be always connected to GND
+       PORTB &= 0xF5;                                   //Clear the 2nd (OC1A) and 4th (OC2A) bits. Set High-Side transistors LOW.
+       PORTB |= (1 << PORTB2);                          //Set the 3rd (OC1B) bit. Set Low-Side transistor HIGH. Should be connected to GND.
+       PORTD |= (1 << PORTD3);                          //Set the 4th bit (OC2B). Set Low-Side transistor HIGH. Should be connected to GND.
        cli();                      //Disable interrupts
        PWM_Running = PWM_RUNNING;
        //Synchronising all 3 timers 1st segment. Source: http://www.openmusiclabs.com/learning/digital/synchronizing-timers/index.html
@@ -369,9 +370,9 @@ void Pwm_Config()
        TIMSK0 = (1 << TOIE0);      //Timer/Counter0 Overflow Interrupt Enable
        OCR0A = 0;     //Sign determined by set or clear at count-up. High-side IGBT OFF.
        OCR0B = 127;   //Sign determined by set or clear at count-up. Low-side IGBT 50% duty cycle to charge bootstrap cap.
-       // Timer 1
-       TCCR1A = (1 << COM1A1) | (1 << COM1B1) | (1 << COM1B0) | (1 << WGM10); // Clear OC1A and set OC1B counting up. Waveform mode 1 (Table 14-8)
-       TCCR1B = (1 << CS10);       //No prescaler
+       // Timer 1 - Disabled
+       TCCR1A = 0;
+       TCCR1B = 0;
        OCR1A = 0;     //Sign determined by set or clear at count-up. High-side IGBT OFF.
        OCR1B = 127;   //Sign determined by set or clear at count-up. Low-side IGBT 50% duty cycle to charge bootstrap cap.
        // Timer 2 - Disabled
