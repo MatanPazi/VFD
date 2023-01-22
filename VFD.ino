@@ -56,6 +56,8 @@
 #define PWM_RUNNING 2
 #define PWM_NOT_RUNNING 1
 #define PWM_NOT_SET 0
+#define DEATTIME_ADD  5
+#define DEATTIME_SUB  2
 //millis(), delay() don't work as expected due to use of timers in PWM.
 //Chosen through trial and error.
 #define SHORT_CLICK     10
@@ -419,35 +421,35 @@ ISR (TIMER0_OVF_vect)
       if (Sine_Index_120 == Sine_Len) Sine_Index_120 = 0;
       if (Sine_Index_240 == Sine_Len) Sine_Index_240 = 0;    
       //  
-      if ((Sine_Used[Sine_Index] - 2) < MIN_PWM_VAL)        
+      if ((Sine_Used[Sine_Index] - DEATTIME_SUB) < MIN_PWM_VAL)        
       {
          OCR0A = 0;
       }
       else
       {
-         OCR0A = uint8_t(Sine_Used[Sine_Index] - 2);        //Constant parameter is due to Deadtime handling.
+         OCR0A = uint8_t(Sine_Used[Sine_Index] - DEATTIME_SUB);
       }
-      OCR0B = OCR0A + 5;                                    //Constant parameter is due to Deadtime handling.
+      OCR0B = OCR0A + DEATTIME_ADD;                            
 
-      if ((Sine_Used[Sine_Index_120] - 2) < MIN_PWM_VAL)    
+      if ((Sine_Used[Sine_Index_120] - DEATTIME_SUB) < MIN_PWM_VAL)    
       {
          OCR1A = 0;
       }
       else
       {
-         OCR1A = uint8_t(Sine_Used[Sine_Index_120] - 2);    
+         OCR1A = uint8_t(Sine_Used[Sine_Index_120] - DEATTIME_SUB);    
       }
-      OCR1B = OCR1A + 5;
+      OCR1B = OCR1A + DEATTIME_ADD;
 
-      if ((Sine_Used[Sine_Index_240] - 2) < MIN_PWM_VAL)
+      if ((Sine_Used[Sine_Index_240] - DEATTIME_SUB) < MIN_PWM_VAL)
       {
           OCR2A = 0;
       }            
       else
       {
-          OCR2A = uint8_t(Sine_Used[Sine_Index_240] - 2);
+          OCR2A = uint8_t(Sine_Used[Sine_Index_240] - DEATTIME_SUB);
       }
-      OCR2B = OCR2A + 5;
+      OCR2B = OCR2A + DEATTIME_ADD;
 
       OVF_Counter = 0;
       Sine_Index++;
