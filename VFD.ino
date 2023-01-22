@@ -112,8 +112,8 @@ uint8_t Desired_Freq = Min_Freq;          //Desired sine wave freq [Hz]
 uint8_t Sine_Index = 0;                   //3 sine wave indices are used to allow for phase shifted sine waves.
 uint8_t Sine_Index_120 = Sine_Len / 3;
 uint8_t Sine_Index_240 = (Sine_Len * 2) / 3;       //Sine_Len must be lower than 128, otherwise, change eq. 
-uint8_t OVF_Counter = 0;                  //Increments every Timer0 overflow
-volatile uint8_t OVF_Counter_Compare = 0;          //Compare OVF_Counter to this value (Base freq/ desired freq)
+uint8_t OVF_Counter = 0;                  //Increments every Timer0 overflow                                          
+uint8_t OVF_Counter_Compare = 0;          //Compare OVF_Counter to this value (Base freq / desired freq).
 
 TM1637Display Display1(CLK1, DIO1);
 TM1637Display Display2(CLK2, DIO2);
@@ -149,8 +149,16 @@ void loop()
    Desired_Freq = ((uint8_t)(analogRead(POT_INPUT) >> 3));   //A value of 1023 (5V) -> 128[Hz]. Divide result by 8 to get value in Hz. Gives resolution of 1[Hz]
    if (Desired_Freq < Min_Freq) Desired_Freq = Min_Freq;
    else if (Desired_Freq > Max_Freq) Desired_Freq = Max_Freq;
-   OVF_Counter_Compare = (uint8_t)(Base_Freq / Desired_Freq);
-   Amp = ((float)(Desired_Freq) * V_f) / VBus;                 //Calculating the sine wave amplitude based on the desired frequency and the V/f value.
+   OVF_Counter_Compare_Temp = (uint8_t)(Base_Freq / Desired_Freq);
+   //ATOMIC_BLOCK(ATOMIC_RESTORESTATE)                         // See why ATOMIC_BLOCK may be needed in comments below.
+   {
+      OVF_Counter_Compare = OVF_Counter_Compare_Temp;        // Using temp variable in previous line so the ISR won't interrupt in the middle of calclating this parameter.
+                                                             // Setting a local 8 bit variable takes 1 clock cycle, see reference: https://ww1.microchip.com/downloads/en/Appnotes/doc1497.pdf
+                                                             // Consider using ATOMIC_BLOCK(ATOMIC_RESTORESTATE) for this calculation since these variables are global
+                                                             // So may still take more than a clock cycle (?)
+                                                             // See reference for ATOMIC_BLOCK: https://forum.arduino.cc/t/demonstration-atomic-access-and-interrupt-routines/73135
+   }
+   Amp = ((float)(Desired_Freq) * V_f) / VBus;               // Calculating the sine wave amplitude based on the desired frequency and the V/f value.
    if (Amp < Min_Amp) Amp = Min_Amp;      
    else if (Amp > Max_Amp) Amp = Max_Amp;   
    for (int i = 0; i < Sine_Len; i++)
