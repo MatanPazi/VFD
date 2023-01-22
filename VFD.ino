@@ -83,7 +83,7 @@ const uint8_t SPACE[] = {
     }; 
 
 // Generated using: https://www.daycounter.com/Calculators/Sine-Generator-Calculator.phtml
-const int16_t Sine[] = {125,179,223,246,246,223,179,125,71,27,6,6,27,71,125};
+const float Sine[] = {125.0,179.0,223.0,246.0,246.0,223.0,179.0,125.0,71.0,27.0,6.0,6.0,27.0,71.0,125.0};
 const uint8_t Sine_Len = 15;              //Sine table length
 const uint8_t Min_Freq = 20;              //Minimal demanded sine wave frequency
 const uint8_t Max_Freq = 120;             //Maximal demanded sine wave frequency
@@ -94,11 +94,10 @@ const float V_f = 3.8333;                 //V/f value. ~230[VAC] w/ 60[Hz]
 const float VBus = 230.0;                 //AC voltage [VAC]
 bool  Phase_Config = 0;                   //0: 3 phase, 1: 1 phase
 bool  Config_Editable = 0;                //Is the configuration editable or not (Between 2 long clicks). 0: No, 1: Yes
-int8_t DT = 1;                            //Dead time to prevent short-circuit betweem high & low mosfets
+// int8_t DT = 1;                            //Dead time to prevent short-circuit betweem high & low mosfets
 int16_t Sine_Used[] = {125,179,223,246,246,223,179,125,71,27,6,6,27,71,125};
 uint8_t  Click_Type = 0;                  //1: Short, 2: Long
 uint8_t  PWM_Running = PWM_NOT_SET;       //Indicates if the PWM is operating or not. 2 is running, 1 is not, initialized to 0 to indicate not yet set.
-uint16_t Curr_Value = 0;                  //Current value measured in [mA]
 uint32_t Timer = 0;                       //Timer, increments every loop
 uint32_t Click_Timer = 0;                 //Increments while button is clicked
 uint32_t Pot_Switch_Off_Timer = 0;        //Increments while potentiometer switch is OFF
@@ -107,14 +106,14 @@ uint32_t Display_Timer = 0;               //Used for delay of the blinking displ
 uint32_t Timer_Temp = 0;                  //Used to make sure of consecutive executions
 uint32_t Timer_Temp1 = 0;                 //Used to make sure of consecutive executions
 uint32_t Init_PWM_Counter = 0;            //Used for charging the bootstrap capacitors, source below
-float Amp = Min_Amp;                      //Sine wave amplitude
-uint8_t Desired_Freq = Min_Freq;          //Desired sine wave freq [Hz]
+uint16_t Curr_Value = 0;                  //Current value measured in [mA]
 uint8_t Sine_Index = 0;                   //3 sine wave indices are used to allow for phase shifted sine waves.
 uint8_t Sine_Index_120 = Sine_Len / 3;
 uint8_t Sine_Index_240 = (Sine_Len * 2) / 3;       //Sine_Len must be lower than 128, otherwise, change eq. 
 uint8_t OVF_Counter = 0;                  //Increments every Timer0 overflow                                          
-uint8_t OVF_Counter_Compare_Temp = 0;     // Used temporarily for OVF_Counter_Compare.
 uint8_t OVF_Counter_Compare = 0;          //Compare OVF_Counter to this value (Base freq / desired freq).
+
+
 
 TM1637Display Display1(CLK1, DIO1);
 TM1637Display Display2(CLK2, DIO2);
@@ -145,26 +144,36 @@ void setup()
 }
 void loop()
 {   
+   // Local variables
+   uint8_t Desired_Freq;                                 //Desired sine wave freq [Hz]
+   uint8_t OVF_Counter_Compare_Temp;                     //Used temporarily for OVF_Counter_Compare
+   float Amp;                                            //Sine wave amplitude
+
    //Calculate variables
    Curr_Value = ((analogRead(CURR_INPUT) >> 4) << 7);        //A value of 1023 (5V) -> 8000[mA]. First divide by 16 then multiply by 128. Gives resolution of 128[mA]
    Desired_Freq = ((uint8_t)(analogRead(POT_INPUT) >> 3));   //A value of 1023 (5V) -> 128[Hz]. Divide result by 8 to get value in Hz. Gives resolution of 1[Hz]
    if (Desired_Freq < Min_Freq) Desired_Freq = Min_Freq;
    else if (Desired_Freq > Max_Freq) Desired_Freq = Max_Freq;
    OVF_Counter_Compare_Temp = (uint8_t)(Base_Freq / Desired_Freq);
-   //ATOMIC_BLOCK(ATOMIC_RESTORESTATE)                         // See why ATOMIC_BLOCK may be needed in comments below.
+   //ATOMIC_BLOCK(ATOMIC_RESTORESTATE)                         // See why ATOMIC_BLOCK may be needed in comments below. Pretty much disables interrupts for this calculation.
    {
-      OVF_Counter_Compare = OVF_Counter_Compare_Temp;        // Using temp variable in previous line so the ISR won't interrupt in the middle of calclating this parameter.
+      OVF_Counter_Compare = OVF_Counter_Compare_Temp;        // If ISR interrupts in middle of calculation, may give completley false OVF_Counter_Compare value. May be problematic.
+                                                             // Using temp variable in previous line so the ISR won't interrupt in the middle of calclating this parameter.
                                                              // Setting a local 8 bit variable takes 1 clock cycle, see reference: https://ww1.microchip.com/downloads/en/Appnotes/doc1497.pdf
-                                                             // Consider using ATOMIC_BLOCK(ATOMIC_RESTORESTATE) for this calculation since these variables are global
-                                                             // So may still take more than a clock cycle (?)
+                                                             // Still consider using ATOMIC_BLOCK(ATOMIC_RESTORESTATE) for this calculation since these variables are global.
+                                                             // Using global variables takes longer due to LDS and STS, See page 12 in reference above.
+                                                             // So setting may still take more than a clock cycle (?)
                                                              // See reference for ATOMIC_BLOCK: https://forum.arduino.cc/t/demonstration-atomic-access-and-interrupt-routines/73135
    }
-   Amp = ((float)(Desired_Freq) * V_f) / VBus;               // Calculating the sine wave amplitude based on the desired frequency and the V/f value.
+   Amp = ((float)(Desired_Freq) * V_f) / VBus;               // Calculating the sine wave amplitude based on the desired frequency and the V/f value.                                                             
    if (Amp < Min_Amp) Amp = Min_Amp;      
    else if (Amp > Max_Amp) Amp = Max_Amp;   
-   for (int i = 0; i < Sine_Len; i++)
+   //ATOMIC_BLOCK(ATOMIC_RESTORESTATE)                       // ATOMIC_BLOCK may be needed here as well...
    {
-      Sine_Used[i] = (int16_t)(Amp * (float)(Sine[i]));
+      for (int i = 0; i < Sine_Len; i++)
+      {
+         Sine_Used[i] = (int16_t)(Amp * Sine[i]);
+      }
    }
    //Run functions
    Pot_Switch_State_Check();
@@ -410,35 +419,35 @@ ISR (TIMER0_OVF_vect)
       if (Sine_Index_120 == Sine_Len) Sine_Index_120 = 0;
       if (Sine_Index_240 == Sine_Len) Sine_Index_240 = 0;    
       //  
-      if ((Sine_Used[Sine_Index] - 2*DT) < MIN_PWM_VAL)
+      if ((Sine_Used[Sine_Index] - 2) < MIN_PWM_VAL)        
       {
          OCR0A = 0;
       }
       else
       {
-         OCR0A = uint8_t(Sine_Used[Sine_Index] - 2*DT);        
+         OCR0A = uint8_t(Sine_Used[Sine_Index] - 2);        //Constant parameter is due to Deadtime handling.
       }
-      OCR0B = OCR0A + 5*DT;
+      OCR0B = OCR0A + 5;                                    //Constant parameter is due to Deadtime handling.
 
-      if ((Sine_Used[Sine_Index_120] - 2*DT) < MIN_PWM_VAL)
+      if ((Sine_Used[Sine_Index_120] - 2) < MIN_PWM_VAL)    
       {
          OCR1A = 0;
       }
       else
       {
-         OCR1A = uint8_t(Sine_Used[Sine_Index_120] - 2*DT);
+         OCR1A = uint8_t(Sine_Used[Sine_Index_120] - 2);    
       }
-      OCR1B = OCR1A + 5*DT;
+      OCR1B = OCR1A + 5;
 
-      if ((Sine_Used[Sine_Index_240] - 2*DT) < MIN_PWM_VAL)
+      if ((Sine_Used[Sine_Index_240] - 2) < MIN_PWM_VAL)
       {
           OCR2A = 0;
       }            
       else
       {
-          OCR2A = uint8_t(Sine_Used[Sine_Index_240] - 2*DT);
+          OCR2A = uint8_t(Sine_Used[Sine_Index_240] - 2);
       }
-      OCR2B = OCR2A + 5*DT;
+      OCR2B = OCR2A + 5;
 
       OVF_Counter = 0;
       Sine_Index++;
