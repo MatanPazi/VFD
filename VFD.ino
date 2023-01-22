@@ -113,7 +113,7 @@ uint8_t Sine_Index = 0;                   //3 sine wave indices are used to allo
 uint8_t Sine_Index_120 = Sine_Len / 3;
 uint8_t Sine_Index_240 = (Sine_Len * 2) / 3;       //Sine_Len must be lower than 128, otherwise, change eq. 
 uint8_t OVF_Counter = 0;                  //Increments every Timer0 overflow                                          
-uint8_t OVF_Counter_Compare_Temp = 0      // Used temporarily for OVF_Counter_Compare.
+uint8_t OVF_Counter_Compare_Temp = 0;     // Used temporarily for OVF_Counter_Compare.
 uint8_t OVF_Counter_Compare = 0;          //Compare OVF_Counter to this value (Base freq / desired freq).
 
 TM1637Display Display1(CLK1, DIO1);
