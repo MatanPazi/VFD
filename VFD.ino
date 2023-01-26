@@ -156,7 +156,7 @@ void loop()
    Desired_Freq = ((uint8_t)(analogRead(POT_INPUT) >> 3));   //A value of 1023 (5V) -> 128[Hz]. Divide result by 8 to get value in Hz. Gives resolution of 1[Hz]
    if (Desired_Freq < Min_Freq) Desired_Freq = Min_Freq;
    else if (Desired_Freq > Max_Freq) Desired_Freq = Max_Freq;
-   OVF_Counter_Compare_Temp = (uint8_t)(Base_Freq / Desired_Freq);
+   OVF_Counter_Compare_Temp = (uint8_t)(Base_Freq / Desired_Freq); //Decides after how many interrupts should I increment the look-up table index.
    //ATOMIC_BLOCK(ATOMIC_RESTORESTATE)                         // See why ATOMIC_BLOCK may be needed in comments below. Pretty much disables interrupts for this calculation.
    {
       OVF_Counter_Compare = OVF_Counter_Compare_Temp;        // If ISR interrupts in middle of calculation, may give completley false OVF_Counter_Compare value. May be problematic.
