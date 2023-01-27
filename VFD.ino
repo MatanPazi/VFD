@@ -67,6 +67,8 @@
 #define RELAY_CHARGE_WAIT      2000000     // Approx. 8 seconds
 #define DISPLAY_BLINK   100
 #define MIN_PWM_VAL   6                   // Due to isolator response time. Found through trial and error
+#define BUTTON_IS_PRESSED      (!((PINC >> PINC4) & 1))      // Pin 4 of port C (Button) is pressed. when button is pushed, PINC4 is pulled LOW.
+#define POT_SWITCH_IS_ON       (!((PINC >> PINC3) & 1))      // Pin 3 of port C (Potentiometer switch) is on. when switch is on, PINC3 is pulled LOW.
 
 const uint8_t ONE_PHASE[] = {
     SEG_B | SEG_C,                                    // 1
@@ -193,7 +195,7 @@ void loop()
 */
 void Pot_Switch_State_Check()    
 {
-   if (!((PINC >> PINC3) & 1))     //Potentiometer switch ON (when ON, PINC3 is pulled LOW).
+   if (POT_SWITCH_IS_ON)
    {      
       if (PWM_Running != PWM_RUNNING)    //If PWM isn't running (If it was already running, no need to update anything).
       {
@@ -238,7 +240,7 @@ void Pot_Switch_State_Check()
 */
 void Button_Click()
 {
-  if (!((PINC >> PINC4) & 1))     //Button being pushed (when button is pushed, PINC4 is pulled LOW).
+  if (BUTTON_IS_PRESSED)
   {
     if (Timer - Timer_Temp1  > 1) Click_Timer = 0;    //To make sure these increments are consecutive
     else Click_Timer++;
