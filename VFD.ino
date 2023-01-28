@@ -8,21 +8,13 @@
    1,041.66 / 100 = 10.41 OVF scenarios
    for 90[Hz] -> 1,041.66 / 90 = 11.57 OVF scenarios etc.
    Lower resolution at higher frequencies (Rounded to a whole number)
-   The amplitude will be derived from the desired frequency and the V/f value (230[VAC]/60[Hz]=3.8333), with a minimum and maximum value.
+   The amplitude will be derived from the desired frequency and the V/f value (230[VAC]/60[Hz]=3.8333).
    For example, w/ a desired freq of 30[Hz], the amplitude will be (3.8333 * 30) / 230 = 0.5
    Due to low resolution of compare registers (only 1 byte), attenuating by dividing the sine table values
-   will eventually lead to a distorted sine wave.
-   Consider the following to overcome the distorted sine wave issue:
-   Since each sine index is repeated at least 10 times (10 OVF scenarios for max freq of 100 [Hz])
-   I can simply turn all the transistors off for some of the OVF scenarios, depending on the desired attenuation.
-   For now, after testing, seems like even at an amplitude of 10%, the sine wave form still remains. So will continue using division for now.
+   will eventually lead to a distorted sine wave so need to set a minimum Amp value.
    If operating a 3 phase motor, the 3 sine waves need to be 120 def apart
-   If operating a single phase motor, we have 2 options depending on the wiring: (Source: https://youtu.be/FyeJJ3Tp6iY?t=58)
-   We'll always assume the capacitors are removed, as they are unnecessary:
-      The phase shift between the main and auxiliary windings won't be 90, but at 120 degrees, will still be reasonable.
-      Phase V (As depicted in the image in the source) will always be connected to GND.
-      May be possible in the future to disconnect phase W as the deputy winding is not necessary once reaching a certain speed. But might require a HW change.
-   
+   If operating a single phase motor, the phase shift between the main and auxiliary windings won't be 90, but at 120 degrees, will still be reasonable.
+   phase V will always be connected to GND.   
    LED Display tutorial:
    https://lastminuteengineers.com/tm1637-arduino-tutorial/
    //Atmega328 pin numbers:
