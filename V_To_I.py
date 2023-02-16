@@ -9,11 +9,11 @@ t = np.linspace(0,1,10000)      # Time array, 1 second, 1000 sample points.
 R = 1                           # [Ohm]
 L = 0.01                        # [Henry]
 
-V = 1 + np.sin(omega*t)         # Desired Current Waveform
-PWM_Freq = omega * 20
-PWM = 1 + signal.square(PWM_Freq * t, duty=(V)/2)
+V = 1 + np.sin(omega*t)         # Desired Voltage Waveform
+PWM_Freq = omega * 20           # PWM frequency
+PWM = 1 + signal.square(PWM_Freq * t, duty=(V)/2)   # PWM signal correlating to the voltage sinusoidal waveform
 
-# Find voltage by using I to V transfer function.
+# Find voltage by using V to I transfer function.
 V_To_I_TF_num = [1]
 V_To_I_TF_den = [L, R]
 V_To_I_TF = signal.TransferFunction(V_To_I_TF_num, V_To_I_TF_den)
