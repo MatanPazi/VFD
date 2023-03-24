@@ -1,3 +1,4 @@
+## .py script to show voltage to current transfer function and the use of PWM signals to generate current waveforms.
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import signal
