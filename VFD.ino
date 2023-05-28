@@ -198,7 +198,7 @@ void loop()
    //Run functions
    Pot_Switch_State_Check();
    if (PWM_Running != PWM_RUNNING) Button_Click();
-   if (PWM_Running != PWM_NOT_SET) Display(PWM_Running, Config_Editable);
+   if (PWM_Running != PWM_NOT_SET) Display(PWM_Running, Config_Editable, Desired_Freq);
    Timer++;    
 }
 
@@ -281,12 +281,13 @@ void Button_Click()
 
 
 /* Display(): Chooses what and how to display on the 2 available LED displays.
-   2 inputs:
+   3 inputs:
       1. PWM_Running, whether or not the PWM is active or not.
       2. Blink, whether to cause the display to blink or not. signifies if the configuration is editable or not.
-         Blinking: Editable, Not blinking: Not editable
+         Blinking: Editable, Not blinking: Not editable.
+      3. Desired_Freq, the desired frequency to display.
 */
-void Display(uint8_t PWM_Running, bool Blink)
+void Display(uint8_t PWM_Running, bool Blink, uint8_t Desired_Freq)
 {
   if (PWM_Running == PWM_RUNNING)
   {
