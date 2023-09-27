@@ -7,39 +7,41 @@ import Transformations as trs
 import matplotlib.animation as animation
 
 # parameter_to_change = 'none'
-# parameter_to_change = 'speed'
-parameter_to_change = 'idiq'
+parameter_to_change = 'speed'
+# parameter_to_change = 'idiq'
 
-OMEGA = 2*np.pi*50
-N = 1000
-T = 1
-t = np.linspace(0,T,N)
-omega = OMEGA*np.ones(N)
+OMEGA = 2*np.pi*10      # Speed constant [rad/sec]
+N = 500                 # Number of sampled
+T = 1                   # Plot time [s]
+t = np.linspace(0,T,N)  # Time array
+omega = OMEGA*np.ones(N)# Speed array
+
+# Index at which to change the selected parameter
 chg_index = N//2
 
 if (parameter_to_change == 'speed'):
     omega[chg_index : -1] *= 2
 
-R = 0.5
-L = 0.001
+R = 0.5     # [Ohm]
+L = 0.001   # [H]
 
 # BEMF
-Ke = -0.6
-KeA = Ke * np.sin(omega*t)              # Sinusoidal BEMF
-KeB = Ke * np.sin(omega*t - np.deg2rad(120))              # Sinusoidal BEMF
-KeC = Ke * np.sin(omega*t - np.deg2rad(240))              # Sinusoidal BEMF
-BEMFA = KeA * omega                      # BEMF
-BEMFB = KeB * omega                      # BEMF
-BEMFC = KeC * omega                      # BEMF
+Ke = -0.5   # [V/rad/sec]
+KeA = Ke * np.sin(omega*t)                  
+KeB = Ke * np.sin(omega*t - np.deg2rad(120))
+KeC = Ke * np.sin(omega*t - np.deg2rad(240))
+BEMFA = KeA * omega                         
+BEMFB = KeB * omega                         
+BEMFC = KeC * omega                         
 
-# Desired current vector
-I = 100
+# Desired stator current amplitude
+Is = 100
 dqAng = np.deg2rad(90)*np.ones(N)        # dqAng = 0[deg] -> Only Id. dqAng = 90[deg]  ->  Only Iq
 if (parameter_to_change == 'idiq'):
-    dqAng[chg_index : -1] *= 0.3
+    dqAng[chg_index : -1] = np.deg2rad(30)
 
-Iq = I * np.sin(dqAng)
-Id = -I * np.cos(dqAng)
+Iq = Is * np.sin(dqAng)
+Id = -Is * np.cos(dqAng)
 
 # Find ABC current
 dAlphaAng = np.deg2rad(0)            # Angle in rad betwen Id and alpha, see: https://www.mathworks.com/help/mcb/ref/inverseparktransform.html
@@ -64,9 +66,9 @@ tout,DeltaVa,xout = signal.lsim(IToV_TF, Ia, t)
 tout,DeltaVb,xout = signal.lsim(IToV_TF, Ib, t)
 tout,DeltaVc,xout = signal.lsim(IToV_TF, Ic, t)
 
-Va = DeltaVa + BEMFA
-Vb = DeltaVb + BEMFB
-Vc = DeltaVc + BEMFC
+DrivingVa = DeltaVa + BEMFA
+DrivingVb = DeltaVb + BEMFB
+DrivingVc = DeltaVc + BEMFC
 
 
 # # It can be seen very nicely, that with only Iq, the voltage (V) amplitude required is higher than with an added Id element.
@@ -84,13 +86,13 @@ Vc = DeltaVc + BEMFC
 # Animating the graphs
 fig, (ax, ax_chg) = plt.subplots(2,1)
 # Find min max values of represented data
-max_y = int(max(max(Ia), max(BEMFA), max(DeltaVa), max(Va))) + 10
-min_y = int(min(min(Ia), min(BEMFA), min(DeltaVa), min(Va))) - 10
+max_y = int(max(max(Ia), max(BEMFA), max(DeltaVa), max(DrivingVa))) + 10
+min_y = int(min(min(Ia), min(BEMFA), min(DeltaVa), min(DrivingVa))) - 10
 
-line1 = ax.plot(t[1], Ia[1], label='Ia[A]')[0]
-line2 = ax.plot(t[1], BEMFA[1], label='BEMFA[V]')[0]
-line3 = ax.plot(t[1], DeltaVa[1], label='DrivingV - BEMF [V]')[0]
-line4 = ax.plot(t[1], Va[1], label='DrivingV [V]')[0]
+line1 = ax.plot(t[1], Ia[1], label='Ia [A]')[0]
+line2 = ax.plot(t[1], BEMFA[1], label='BEMFA [V]')[0]
+line3 = ax.plot(t[1], DeltaVa[1], label='DrivingVa - BEMFA [V]')[0]
+line4 = ax.plot(t[1], DrivingVa[1], label='DrivingVa [V]')[0]
 ax.set(xlim=[0, T], ylim=[min_y, max_y], xlabel='Time [s]', ylabel='Parameters')
 ax.legend()
 
@@ -100,7 +102,7 @@ if (parameter_to_change == 'idiq'):
     ax_chg.set(xlim=[0, T], ylim=[min(-10, min(Id - 10)), max(max(Iq), max(Id)) + 10], xlabel='Time [s]', ylabel='Current [A]')
     ax_chg.legend()
 else:
-    line6 = ax_chg.plot(t[1], omega[1], label='Omega[Rad/sec]')[0]
+    line5 = ax_chg.plot(t[1], omega[1], label='Omega[Rad/sec]')[0]
     ax_chg.set(xlim=[0, T], ylim=[-10, max(omega)+10], xlabel='Time [s]', ylabel='Omega [rad/sec]')
     ax_chg.legend()
 
@@ -114,7 +116,7 @@ def update(frame):
     line3.set_xdata(t[:frame])
     line3.set_ydata(DeltaVa[:frame])
     line4.set_xdata(t[:frame])
-    line4.set_ydata(Va[:frame])
+    line4.set_ydata(DrivingVa[:frame])
     line5.set_xdata(t[:frame])
     if (parameter_to_change == 'idiq'):
         line5.set_ydata(Iq[:frame])
@@ -125,5 +127,5 @@ def update(frame):
         line5.set_ydata(omega[:frame])
     return (line1, line2, line3, line4, line5)
 
-ani = animation.FuncAnimation(fig=fig, func=update, interval=1, frames=N)
+ani = animation.FuncAnimation(fig=fig, func=update, interval=1, frames=N, repeat=False)
 plt.show()
