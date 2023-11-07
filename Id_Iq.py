@@ -99,7 +99,7 @@ ax.legend()
 if (parameter_to_change == 'idiq'):
     line5 = ax_chg.plot(t[1], Iq[1], label='Iq [A]')[0]
     line6 = ax_chg.plot(t[1], Id[1], label='Id [A]')[0]
-    ax_chg.set(xlim=[0, T], ylim=[min(-10, min(Id - 10)), max(max(Iq), max(Id)) + 10], xlabel='Time [s]', ylabel='Current [A]')
+    ax_chg.set(xlim=[0, T], ylim=[min(min(Iq - 10), min(Id - 10)), max(max(Iq), max(Id)) + 10], xlabel='Time [s]', ylabel='Current [A]')
     ax_chg.legend()
 else:
     line5 = ax_chg.plot(t[1], omega[1], label='Omega[Rad/sec]')[0]
