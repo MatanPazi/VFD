@@ -54,14 +54,6 @@ IToV_TF_num = [FarPoleFreq*L, FarPoleFreq*R]
 IToV_TF_den = [1, FarPoleFreq]
 IToV_TF = signal.TransferFunction(IToV_TF_num, IToV_TF_den)
 
-# # Uncomment to plot Bode.
-# w, mag, phase = signal.bode(IToV_TF, w=None, n=100)
-# plt.figure()
-# plt.semilogx(w, mag)    # Bode magnitude plot
-# plt.figure()
-# plt.semilogx(w, phase)  # Bode phase plot
-# plt.show()
-
 tout,DeltaVa,xout = signal.lsim(IToV_TF, Ia, t)
 tout,DeltaVb,xout = signal.lsim(IToV_TF, Ib, t)
 tout,DeltaVc,xout = signal.lsim(IToV_TF, Ic, t)
@@ -69,19 +61,6 @@ tout,DeltaVc,xout = signal.lsim(IToV_TF, Ic, t)
 DrivingVa = DeltaVa + BEMFA
 DrivingVb = DeltaVb + BEMFB
 DrivingVc = DeltaVc + BEMFC
-
-
-# # It can be seen very nicely, that with only Iq, the voltage (V) amplitude required is higher than with an added Id element.
-# plt.figure()
-# plt.xlabel('Time [Sec]')
-# plt.ylabel('[A] OR [V*100]')
-# plt.plot(t[1:-1],100*DeltaVa[1:-1], label='V-BEMF*100')
-# plt.plot(t[1:-1],100*BEMFA[1:-1], label='BEMFA*100')
-# plt.plot(t,Ia, label='Ia')
-# plt.plot(t[1:-1],100*(Va[1:-1]), label='V')
-# plt.legend()
-# plt.show()
-
 
 # Animating the graphs
 fig, (ax, ax_chg) = plt.subplots(2,1)
