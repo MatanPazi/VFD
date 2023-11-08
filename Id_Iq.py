@@ -54,23 +54,23 @@ IToV_TF_num = [FarPoleFreq*L, FarPoleFreq*R]
 IToV_TF_den = [1, FarPoleFreq]
 IToV_TF = signal.TransferFunction(IToV_TF_num, IToV_TF_den)
 
-tout,DeltaVa,xout = signal.lsim(IToV_TF, Ia, t)
-tout,DeltaVb,xout = signal.lsim(IToV_TF, Ib, t)
-tout,DeltaVc,xout = signal.lsim(IToV_TF, Ic, t)
+tout,Va,xout = signal.lsim(IToV_TF, Ia, t)
+tout,Vb,xout = signal.lsim(IToV_TF, Ib, t)
+tout,Vc,xout = signal.lsim(IToV_TF, Ic, t)
 
-DrivingVa = DeltaVa + BEMFA
-DrivingVb = DeltaVb + BEMFB
-DrivingVc = DeltaVc + BEMFC
+DrivingVa = Va + BEMFA
+DrivingVb = Vb + BEMFB
+DrivingVc = Vc + BEMFC
 
 # Animating the graphs
 fig, (ax, ax_chg) = plt.subplots(2,1)
 # Find min max values of represented data
-max_y = int(max(max(Ia), max(BEMFA), max(DeltaVa), max(DrivingVa))) + 10
-min_y = int(min(min(Ia), min(BEMFA), min(DeltaVa), min(DrivingVa))) - 10
+max_y = int(max(max(Ia), max(BEMFA), max(Va), max(DrivingVa))) + 10
+min_y = int(min(min(Ia), min(BEMFA), min(Va), min(DrivingVa))) - 10
 
 line1 = ax.plot(t[1], Ia[1], label='Ia [A]')[0]
 line2 = ax.plot(t[1], BEMFA[1], label='BEMFA [V]')[0]
-line3 = ax.plot(t[1], DeltaVa[1], label='DrivingVa - BEMFA [V]')[0]
+line3 = ax.plot(t[1], Va[1], label='Va [V]')[0]
 line4 = ax.plot(t[1], DrivingVa[1], label='DrivingVa [V]')[0]
 ax.set(xlim=[0, T], ylim=[min_y, max_y], xlabel='Time [s]', ylabel='Parameters')
 ax.legend()
@@ -93,7 +93,7 @@ def update(frame):
     line2.set_xdata(t[:frame])
     line2.set_ydata(BEMFA[:frame])
     line3.set_xdata(t[:frame])
-    line3.set_ydata(DeltaVa[:frame])
+    line3.set_ydata(Va[:frame])
     line4.set_xdata(t[:frame])
     line4.set_ydata(DrivingVa[:frame])
     line5.set_xdata(t[:frame])
