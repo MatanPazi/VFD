@@ -35,7 +35,7 @@ BEMFB = KeB * omega
 BEMFC = KeC * omega                         
 
 # Desired stator current amplitude
-Is = 100
+Is = 100    # [A]
 dqAng = np.deg2rad(90)*np.ones(N)        # dqAng = 0[deg] -> Only Id. dqAng = 90[deg]  ->  Only Iq
 if (parameter_to_change == 'idiq'):
     dqAng[chg_index : -1] = np.deg2rad(30)
