@@ -7,8 +7,8 @@ import Transformations as trs
 import matplotlib.animation as animation
 
 # parameter_to_change = 'none'
-parameter_to_change = 'speed'
-# parameter_to_change = 'idiq'
+# parameter_to_change = 'speed'
+parameter_to_change = 'idiq'
 
 OMEGA = 2*np.pi*10      # Speed constant [rad/sec]
 N = 500                 # Number of sampled
@@ -38,7 +38,7 @@ BEMFC = KeC * omega
 Is = 100    # [A]
 dqAng = np.deg2rad(90)*np.ones(N)        # dqAng = 0[deg] -> Only Id. dqAng = 90[deg]  ->  Only Iq
 if (parameter_to_change == 'idiq'):
-    dqAng[chg_index : -1] = np.deg2rad(30)
+    dqAng[chg_index : -1] = np.deg2rad(45)
 
 Iq = Is * np.sin(dqAng)
 Id = -Is * np.cos(dqAng)
@@ -62,6 +62,10 @@ DrivingVa = Va + BEMFA
 DrivingVb = Vb + BEMFB
 DrivingVc = Vc + BEMFC
 
+Valpha, Vbeta = trs.abc_to_alphaBeta0(DrivingVa, DrivingVb, DrivingVc)
+Vq, Vd = trs.alphaBeta0_to_dq0(Valpha, Vbeta, omega*t)
+Vamp = np.sqrt(Vq*Vq + Vd*Vd)
+
 # Animating the graphs
 fig, (ax, ax_chg) = plt.subplots(2,1)
 # Find min max values of represented data
@@ -72,16 +76,18 @@ line1 = ax.plot(t[1], Ia[1], label='Ia [A]')[0]
 line2 = ax.plot(t[1], BEMFA[1], label='BEMFA [V]')[0]
 line3 = ax.plot(t[1], Va[1], label='Va [V]')[0]
 line4 = ax.plot(t[1], DrivingVa[1], label='DrivingVa [V]')[0]
+line5 = ax.plot(t[1], Vamp[1], label='Vamp [V]')[0]
+
 ax.set(xlim=[0, T], ylim=[min_y, max_y], xlabel='Time [s]', ylabel='Parameters')
 ax.legend()
 
 if (parameter_to_change == 'idiq'):
-    line5 = ax_chg.plot(t[1], Iq[1], label='Iq [A]')[0]
-    line6 = ax_chg.plot(t[1], Id[1], label='Id [A]')[0]
+    line6 = ax_chg.plot(t[1], Iq[1], label='Iq [A]')[0]
+    line7 = ax_chg.plot(t[1], Id[1], label='Id [A]')[0]
     ax_chg.set(xlim=[0, T], ylim=[min(min(Iq - 10), min(Id - 10)), max(max(Iq), max(Id)) + 10], xlabel='Time [s]', ylabel='Current [A]')
     ax_chg.legend()
 else:
-    line5 = ax_chg.plot(t[1], omega[1], label='Omega[Rad/sec]')[0]
+    line6 = ax_chg.plot(t[1], omega[1], label='Omega[Rad/sec]')[0]
     ax_chg.set(xlim=[0, T], ylim=[-10, max(omega)+10], xlabel='Time [s]', ylabel='Omega [rad/sec]')
     ax_chg.legend()
 
@@ -97,14 +103,16 @@ def update(frame):
     line4.set_xdata(t[:frame])
     line4.set_ydata(DrivingVa[:frame])
     line5.set_xdata(t[:frame])
+    line5.set_ydata(Vamp[:frame])
+    line6.set_xdata(t[:frame])
     if (parameter_to_change == 'idiq'):
-        line5.set_ydata(Iq[:frame])
-        line6.set_xdata(t[:frame])
-        line6.set_ydata(Id[:frame])
-        return (line1, line2, line3, line4, line5, line6)
+        line6.set_ydata(Iq[:frame])
+        line7.set_xdata(t[:frame])
+        line7.set_ydata(Id[:frame])
+        return (line1, line2, line3, line4, line5, line6, line7)
     else:
-        line5.set_ydata(omega[:frame])
-    return (line1, line2, line3, line4, line5)
+        line6.set_ydata(omega[:frame])
+    return (line1, line2, line3, line4, line5, line6)
 
 ani = animation.FuncAnimation(fig=fig, func=update, interval=1, frames=N, repeat=False)
 plt.show()
