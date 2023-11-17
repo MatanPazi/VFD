@@ -10,7 +10,7 @@ import matplotlib.animation as animation
 # parameter_to_change = 'speed'
 parameter_to_change = 'idiq'
 
-OMEGA = 2*np.pi*10      # Speed constant [rad/sec]
+OMEGA = 2*np.pi*50      # Speed constant [rad/sec]
 N = 500                 # Number of sampled
 T = 1                   # Plot time [s]
 t = np.linspace(0,T,N)  # Time array
@@ -22,8 +22,8 @@ chg_index = N//2
 if (parameter_to_change == 'speed'):
     omega[chg_index : -1] *= 2
 
-R = 0.5     # [Ohm]
-L = 0.001   # [H]
+R = 0.1     # [Ohm]
+L = 0.002   # [H]
 
 # BEMF
 Ke = -0.5   # [V/rad/sec]
