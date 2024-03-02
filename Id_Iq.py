@@ -24,9 +24,9 @@ if (parameter_to_change == 'speed'):
 
 R = 0.1     # [Ohm]
 L = 0.002   # [H]
-47000
+
 # BEMF
-Ke = -0  # [V/rad/sec]
+Ke = -0.5  # [V/rad/sec]
 KeA = Ke * np.sin(omega*t)                  
 KeB = Ke * np.sin(omega*t - np.deg2rad(120))
 KeC = Ke * np.sin(omega*t - np.deg2rad(240))
